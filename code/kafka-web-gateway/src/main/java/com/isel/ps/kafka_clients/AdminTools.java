@@ -1,23 +1,17 @@
 package com.isel.ps.kafka_clients;
 
 import com.isel.ps.Constants;
-import org.apache.kafka.clients.admin.Admin;
-import org.apache.kafka.clients.admin.AdminClientConfig;
-import org.apache.kafka.clients.admin.CreateTopicsResult;
-import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.admin.*;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.config.TopicConfig;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import java.util.Collections;
 import java.util.Properties;
-import java.util.concurrent.ExecutionException;
+import java.util.Set;
 
 public class AdminTools {
 
-    private static final Logger log = LogManager.getLogger(AdminTools.class);
-    private Admin admin;
+    //private static final Logger log = LogManager.getLogger(AdminTools.class);
+    private final Admin admin;
 
 
     public AdminTools() {
@@ -42,12 +36,23 @@ public class AdminTools {
         }
     }
 
-    public boolean getAllTopics() {
 
+    public KafkaFuture<Set<String>> getAllTopics() {
+        try {
+            ListTopicsResult result =  admin.listTopics(new ListTopicsOptions());
+
+
+            return result.names();
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
+
 
     public static void main(String[] args) {
 
+        /*
         try {
             String topicName = "demo-topic";
             int partitions = 5;
@@ -66,6 +71,7 @@ public class AdminTools {
         } catch (ExecutionException | InterruptedException e) {
             throw new RuntimeException(e);
         }
+         */
 
     }
 

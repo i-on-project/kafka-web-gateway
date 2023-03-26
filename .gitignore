@@ -1,0 +1,7 @@
+code/kafka-web-gateway/build/classes/java/main/com/isel/ps/Constants.class
+code/kafka-web-gateway/build/classes/java/main/com/isel/ps/kafka_clients/AdminTools.class
+code/kafka-web-gateway/build/classes/java/main/com/isel/ps/kafka_clients/Consumer.class
+code/kafka-web-gateway/build/classes/java/main/com/isel/ps/kafka_clients/Producer.class
+code/kafka-web-gateway/build/classes/java/main/com/isel/ps/kafka_clients_demos/AdminToolsDemo.class
+code/kafka-web-gateway/build/classes/java/main/com/isel/ps/kafka_clients_demos/ConsumerDemo.class
+code/kafka-web-gateway/build/classes/java/main/com/isel/ps/kafka_clients_demos/ProducerDemo.class
