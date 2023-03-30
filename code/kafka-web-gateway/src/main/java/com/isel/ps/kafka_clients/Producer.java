@@ -43,7 +43,7 @@ public class Producer {
             //producer.abortTransaction();
             //log.error(e.getStackTrace());
         //}
-        return producer.send(new ProducerRecord<>(topicName, record)).get();
+        return producer.send(new ProducerRecord<>(topicName, record, record)).get();
     }
 
     public static void main(String[] args) {

@@ -10,7 +10,9 @@ public class ConsumerDemo {
     private static final Scanner scanner = new Scanner(System.in);
     public static void main(String[] args) {
         System.out.println("Started consumer\n");
-        Consumer consumer = new Consumer("one");
+        System.out.print("Input the group id:");
+        String groupId = scanner.nextLine();
+        Consumer consumer = new Consumer(groupId);
         System.out.println("Input topic name:");
         String topicName = "topic-nr-1";//scanner.nextLine();
         consumer.subscribeTopic(topicName);

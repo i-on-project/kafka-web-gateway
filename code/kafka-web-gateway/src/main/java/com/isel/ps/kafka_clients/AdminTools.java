@@ -4,9 +4,12 @@ import com.isel.ps.Constants;
 import org.apache.kafka.clients.admin.*;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.config.TopicConfig;
+
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 public class AdminTools {
 
@@ -21,15 +24,21 @@ public class AdminTools {
         this.admin = Admin.create(props);
     }
 
-    public KafkaFuture<Void> createTopic(String topicName, int partitions, short replicationFactor) {
+    /**
+     * Waiting for answer of topic being created might not be ideal because creating a topic might take a while,
+     * more so depending on the replication factor, so to make sure topic was created, another request should be
+     * done to get the topic.
+     * @param topicName
+     * @param partitions
+     * @param replicationFactor
+     */
+    public void createTopic(String topicName, int partitions, short replicationFactor) {
         try {
             CreateTopicsResult result = admin.createTopics(Collections.singleton(
                     new NewTopic(topicName, partitions, replicationFactor)
                             .configs(Collections.singletonMap(TopicConfig.CLEANUP_POLICY_CONFIG, TopicConfig.CLEANUP_POLICY_COMPACT))
             ));
-
-
-            return result.values().get(topicName);
+            result.all().get();
 
         } catch (Exception e) {
             throw new RuntimeException(e);
