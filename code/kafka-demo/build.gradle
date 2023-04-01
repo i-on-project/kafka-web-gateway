@@ -1,0 +1,40 @@
+plugins {
+    id 'java'
+    id 'checkstyle'
+}
+
+group 'com.isel.ps'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
+
+    // Kafka
+    implementation group: 'org.apache.kafka', name: 'kafka-clients', version: '3.4.0'
+
+    // Checkstyle
+    implementation group: 'com.puppycrawl.tools', name: 'checkstyle', version: '10.9.3'
+
+    // sl4j simple
+    testImplementation group: 'org.slf4j', name: 'slf4j-simple', version: '2.0.7'
+}
+
+checkstyle {
+    toolVersion '10.9.3'
+    configFile file("config/checkstyle.xml")
+}
+checkstyleMain {
+    source = 'src/main/java'
+}
+checkstyleTest {
+    source = 'src/test/java'
+}
+
+test {
+    useJUnitPlatform()
+}
