@@ -2,6 +2,10 @@ package com.isel.ps.admin;
 
 import java.util.*;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+
 import org.apache.kafka.clients.admin.*;
 import org.apache.kafka.common.errors.TopicExistsException;
 import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
@@ -9,10 +13,12 @@ import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 public class KafkaAdminUtil {
   private final Admin adminClient;
 
+  ExecutorService executor = Executors.newSingleThreadExecutor();
+
   public KafkaAdminUtil(String bootstrapServers) {
     final Map<String, Object> adminConfig = new HashMap<>();
     adminConfig.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-    adminClient = Admin.create(adminConfig);
+    this.adminClient = Admin.create(adminConfig);
   }
 
   public void createTopic(String topicName, int numPartitions, short replicationFactor)
@@ -74,6 +80,22 @@ public class KafkaAdminUtil {
         adminClient.describeTopics(Collections.singleton(topicName), options);
     final Map<String, TopicDescription> topicDescriptions = result.allTopicNames().get();
     return topicDescriptions.containsKey(topicName);
+  }
+
+  public Future<Boolean> waitTopicCreation(String topicName) {
+    return executor.submit(() -> {
+      int tries = 0;
+      while(!hasTopic(topicName) && tries < 20 ) {
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException e) {
+          throw new RuntimeException(e);
+        }
+        tries++;
+      }
+      return tries < 20;
+    });
+
   }
 
   public void closeAdminClient() {
