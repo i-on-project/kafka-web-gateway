@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
@@ -50,6 +51,71 @@ class KafkaConsumerUtilTest {
     ADMIN.deleteTopics(topicPool);
     PRODUCER.closeProducer();
     ADMIN.closeAdminClient();
+  }
+
+  /**
+   *  When only subscribe is used (no seek is used) and there are no committed records yet then the only pulled records are the ones published after starting poll().
+   */
+  @Test
+  void AutomaticConsumerSubscribeNoCommittedRecords() throws ExecutionException, InterruptedException {
+    String topicName = "AutomaticConsumerSubscribeNoCommittedRecordsTopic";
+    String groupId = "AutomaticConsumerSubscribeNoCommittedRecordsGroup";
+
+    int key = 0;
+    PRODUCER.sendRecord(topicName, 0, String.valueOf(key), String.valueOf(key)).get();
+    ++key;
+    PRODUCER.sendRecord(topicName, 0, String.valueOf(key), String.valueOf(key)).get();
+    ++key;
+
+    KafkaConsumer<String, String> consumer = createAutoConsumer(groupId);
+    createDefaultTopic(topicName);
+    TopicPartition partition = new TopicPartition(topicName, 0);
+
+    consumer.subscribe(Collections.singleton(topicName));
+    ConsumerRecords<String, String> records1 = consumer.poll(Duration.ofMillis(2000));
+    consumer.pause(Collections.singleton(partition));
+
+    assertEquals(0, records1.count());
+  }
+
+  /**
+   *  For subscribe() to make the poll() fetch older records (with offsets previous to the poll() call),
+   *  some record needs to already be signaled as committed. For that, a consumer was used with assign()
+   *  instead of subscribe() so that the seek() can be used to manually choose an offset to fetch.
+   *  After that, the commitSync() was used to signal the fetched record as committed so that a later consumer
+   *  can use subscribe to continue fetching from the last committed record instead of only fetching the records
+   *  being published during the poll() call.
+   */
+  @Test
+  void AutomaticConsumerSubscribeCommittedRecords() throws ExecutionException, InterruptedException {
+    String topicName = "AutomaticConsumerSubscribeCommittedRecordsTopic";
+    String groupId = "AutomaticConsumerSubscribeCommittedRecordsGroup";
+
+    int key = 0;
+    PRODUCER.sendRecord(topicName, 0, String.valueOf(key), String.valueOf(key)).get();
+
+    KafkaConsumer<String, String> autoConsumer = createAutoConsumer(groupId);
+    KafkaConsumer<String, String> controlledConsumer = createControlledConsumer(groupId);
+    createDefaultTopic(topicName);
+    TopicPartition partition = new TopicPartition(topicName, 0);
+
+    controlledConsumer.assign(Collections.singleton(partition));
+    controlledConsumer.seek(partition, 0);
+    ConsumerRecords<String, String>  records1 = controlledConsumer.poll(Duration.ofMillis(200));
+    controlledConsumer.commitSync();
+    controlledConsumer.unsubscribe();
+
+    assertEquals(1, records1.count());
+    assertEquals(String.valueOf(key), records1.records(partition).get(0).key());
+
+    key++;
+    PRODUCER.sendRecord(topicName, 0, String.valueOf(key), String.valueOf(key)).get();
+
+    autoConsumer.subscribe(Arrays.asList(topicName));
+    ConsumerRecords<String, String> records2 = autoConsumer.poll(Duration.ofMillis(200));
+
+    assertEquals(1, records2.count());
+    assertEquals(String.valueOf(key), records2.records(partition).get(0).key());
   }
 
   /**
