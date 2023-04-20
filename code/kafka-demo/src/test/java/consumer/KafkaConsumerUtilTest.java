@@ -7,9 +7,7 @@ import com.isel.ps.producer.KafkaProducerUtil;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.protocol.types.ArrayOf;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.*;
 
@@ -17,10 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 
 
@@ -52,6 +47,16 @@ class KafkaConsumerUtilTest {
     PRODUCER.closeProducer();
     ADMIN.closeAdminClient();
   }
+
+  /**
+   * This is a manual test, while the test runs the brokers should reset one by one.
+   */
+  @Test
+  void simpleConsumerAndProducerWhileBrokersFail() {
+    // TODO:
+  }
+
+
 
   /**
    *  When only subscribe is used (no seek is used) and there are no committed records yet then the only pulled records are the ones published after starting poll().
@@ -95,7 +100,7 @@ class KafkaConsumerUtilTest {
     PRODUCER.sendRecord(topicName, 0, String.valueOf(key), String.valueOf(key)).get();
 
     KafkaConsumer<String, String> autoConsumer = createAutoConsumer(groupId);
-    KafkaConsumer<String, String> controlledConsumer = createControlledConsumer(groupId);
+    KafkaConsumer<String, String> controlledConsumer = createManualConsumer(groupId);
     createDefaultTopic(topicName);
     TopicPartition partition = new TopicPartition(topicName, 0);
 
@@ -132,8 +137,8 @@ class KafkaConsumerUtilTest {
     PRODUCER.sendRecord(topicName, 0, String.valueOf(key), String.valueOf(key)).get();
     ++key;
 
-    KafkaConsumer<String, String> controlledConsumer1 = createControlledConsumer(groupId);
-    KafkaConsumer<String, String> controlledConsumer2 = createControlledConsumer(groupId);
+    KafkaConsumer<String, String> controlledConsumer1 = createManualConsumer(groupId);
+    KafkaConsumer<String, String> controlledConsumer2 = createManualConsumer(groupId);
     KafkaConsumer<String, String> autoConsumer1 = createAutoConsumer(groupId);
     KafkaConsumer<String, String> autoConsumer2 = createAutoConsumer(groupId);
 
@@ -196,7 +201,7 @@ class KafkaConsumerUtilTest {
     PRODUCER.sendRecord(topicName, 0, String.valueOf(key), String.valueOf(key)).get();
     key++;
 
-    KafkaConsumer<String, String> consumer = createControlledConsumer("testConsumerPauseAndResumePollingGroup");
+    KafkaConsumer<String, String> consumer = createManualConsumer("testConsumerPauseAndResumePollingGroup");
 
     TopicPartition partition = new TopicPartition(topicName, 0);
 
@@ -226,157 +231,171 @@ class KafkaConsumerUtilTest {
     ConsumerRecords<String, String> records3 = consumer.poll(Duration.ofMillis(1000));
 
     assertEquals(0, records3.count());
-
-    consumer.close();
-    ADMIN.deleteTopic(topicName);
-
-  }
-/*
-  @Test
-  void testCommitSync() {
-    kafkaTestHelper.produceRecords(TOPIC_NAME, PARTITION_COUNT, RECORD_COUNT);
-    KafkaConsumerUtil<String, String> consumerUtil =
-        new KafkaConsumerUtil<>(consumerProps, TOPIC_NAME);
-
-    consumerUtil.consumeRecords();
-    consumerUtil.commitSync();
-
-    consumerUtil.seekToBeginning();
-    List<ConsumerRecord<String, String>> records = consumerUtil.consumeRecords();
-    assertTrue(records.isEmpty());
-
-    consumerUtil.close();
   }
 
   @Test
-  void testCommitAsync() {
-    kafkaTestHelper.produceRecords(TOPIC_NAME, PARTITION_COUNT, RECORD_COUNT);
-    KafkaConsumerUtil<String, String> consumerUtil =
-        new KafkaConsumerUtil<>(consumerProps, TOPIC_NAME);
+  void testSeekEditOffset() throws ExecutionException, InterruptedException {
+    String topicName = "testSeekEditOffsetTopic";
+    String groupId = "testSeekEditOffsetGroup";
 
-    consumerUtil.consumeRecords();
-    consumerUtil.commitAsync();
+    createDefaultTopic(topicName);
+    int key = 0;
+    PRODUCER.sendRecord(topicName, 0, String.valueOf(key), String.valueOf(key)).get();
+    key++;
+    PRODUCER.sendRecord(topicName, 0, String.valueOf(key), String.valueOf(key)).get();
 
-    consumerUtil.seekToBeginning();
-    List<ConsumerRecord<String, String>> records = consumerUtil.consumeRecords();
-    assertTrue(records.isEmpty());
+    KafkaConsumer<String, String> consumer = createManualConsumer(groupId);
+    TopicPartition partition = new TopicPartition(topicName, 0);
 
-    consumerUtil.close();
+    consumer.assign(Arrays.asList(partition));
+    consumer.seek(partition, 0);
+
+    ConsumerRecords<String, String>  records1 = consumer.poll(Duration.ofMillis(200));
+    consumer.commitSync();                                            //TODO: This commit was needed for some reason
+    assertEquals(2, records1.count());
+
+    consumer.seek(partition, 1);
+    ConsumerRecords<String, String>  records2 = consumer.poll(Duration.ofMillis(200));
+    assertEquals(1, records2.count());
   }
 
   @Test
-  void testSeekToBeginning() {
-    kafkaTestHelper.produceRecords(TOPIC_NAME, PARTITION_COUNT, RECORD_COUNT);
-    KafkaConsumerUtil<String, String> consumerUtil =
-        new KafkaConsumerUtil<>(consumerProps, TOPIC_NAME);
+  void testSeekToEndAndSeekToBeginning() throws ExecutionException, InterruptedException {
+    String topicName = "testSeekToEndAndSeekToBeginningTopic";
+    String groupId = "testSeekToEndAndSeekToBeginningGroup";
 
-    consumerUtil.seekToBeginning();
-    List<ConsumerRecord<String, String>> records = consumerUtil.consumeRecords();
-    assertEquals(PARTITION_COUNT * RECORD_COUNT, records.size());
+    createDefaultTopic(topicName);
+    int key = 0;
+    PRODUCER.sendRecord(topicName, 0, String.valueOf(key), String.valueOf(key)).get();
+    key++;
+    PRODUCER.sendRecord(topicName, 0, String.valueOf(key), String.valueOf(key)).get();
 
-    consumerUtil.close();
+    KafkaConsumer<String, String> consumer = createManualConsumer(groupId);
+    TopicPartition partition = new TopicPartition(topicName, 0);
+    consumer.assign(Arrays.asList(partition));
+
+    consumer.seekToBeginning(Collections.singleton(partition));
+    ConsumerRecords<String, String>  records1 = consumer.poll(Duration.ofMillis(200));
+    consumer.commitSync();
+    assertEquals(2, records1.count());
+
+    consumer.seekToBeginning(Collections.singleton(partition));
+    ConsumerRecords<String, String>  records2 = consumer.poll(Duration.ofMillis(200));
+    consumer.commitSync();
+    assertEquals(2, records2.count());
+
+    consumer.seekToEnd(Collections.singleton(partition));
+    ConsumerRecords<String, String>  records3 = consumer.poll(Duration.ofMillis(200));
+    consumer.commitSync();
+    assertEquals(0, records3.count());
+
+    consumer.seekToBeginning(Collections.singleton(partition));
+    ConsumerRecords<String, String>  records4 = consumer.poll(Duration.ofMillis(200));
+    ConsumerRecords<String, String>  records5 = consumer.poll(Duration.ofMillis(200));
+    ConsumerRecords<String, String>  records6 = consumer.poll(Duration.ofMillis(200));
+    ConsumerRecords<String, String>  records7 = consumer.poll(Duration.ofMillis(200));
+    consumer.commitSync();
+    assertEquals(0, records4.count());
+    assertEquals(2, records5.count() + records6.count() + records7.count());
   }
 
-  @Test
-  void testSeekToEnd() {
-    kafkaTestHelper.produceRecords(TOPIC_NAME, PARTITION_COUNT, RECORD_COUNT);
-    KafkaConsumerUtil<String, String> consumerUtil =
-        new KafkaConsumerUtil<>(consumerProps, TOPIC_NAME);
+  /**
+   * When partitions are manually assigned to poll, in each poll call its unpredictable if only
+   * one partition's records are requested or if both/all are...
+   * TODO: Due to discovered complexity, this test is not working and has been left behind... (for now)
+   */
+  //@Test
+  void testPauseAndResumeChosenTopicPartitions() throws ExecutionException, InterruptedException {
+    String topicName = "testPauseAndResumeChosenTopicPartitionsTopic";
+    String groupId = "testPauseAndResumeChosenTopicPartitionsGroup";
 
-    consumerUtil.seekToEnd();
-    List<ConsumerRecord<String, String>> records = consumerUtil.consumeRecords();
-    assertTrue(records.isEmpty());
+    createDefaultTopic(topicName, 2);
 
-    consumerUtil.close();
+    int key = 0;
+    PRODUCER.sendRecord(topicName, 0, String.valueOf(key), String.valueOf(key)).get();
+    key++;
+    PRODUCER.sendRecord(topicName, 1, String.valueOf(key), String.valueOf(key)).get();
+
+    KafkaConsumer<String, String> consumer = createManualConsumer(groupId);
+    TopicPartition partition0 = new TopicPartition(topicName, 0);
+    TopicPartition partition1 = new TopicPartition(topicName, 1);
+
+    consumer.assign(List.of(partition0, partition1));
+    consumer.seek(partition0, 0);
+    consumer.seek(partition1, 0);
+
+    ConsumerRecords<String, String>  records1_partition0 = consumer.poll(Duration.ofMillis(200));
+    assertEquals(1, records1_partition0.count());
+    assertEquals("0", records1_partition0.records(partition0).get(0).value());
+    assertEquals("0", records1_partition0.iterator().next().value());
+
+    ConsumerRecords<String, String>  records1_partition1 = consumer.poll(Duration.ofMillis(200));
+    assertEquals(1, records1_partition1.count());
+    assertEquals("1", records1_partition1.records(partition1).get(0).value());
+    assertEquals("1", records1_partition1.iterator().next().value());
+
+    key++;
+    PRODUCER.sendRecord(topicName, 0, String.valueOf(key), String.valueOf(key)).get();
+    key++;
+    PRODUCER.sendRecord(topicName, 1, String.valueOf(key), String.valueOf(key)).get();
+
+    ConsumerRecords<String, String>  records2_partition0 = consumer.poll(Duration.ofMillis(200));
+    assertEquals(1, records2_partition0.count());
+    assertEquals("2", records2_partition0.records(partition0).get(0).value());
+
+    ConsumerRecords<String, String>  records2_partition1 = consumer.poll(Duration.ofMillis(200));
+    assertEquals(1, records2_partition1.count());
+    assertEquals("3", records2_partition1.records(partition1).get(0).value());
+
+    ConsumerRecords<String, String>  records2_empty = consumer.poll(Duration.ofMillis(200));
+    assertEquals(0, records2_empty.count());
+
+    key++;
+    PRODUCER.sendRecord(topicName, 0, String.valueOf(key), String.valueOf(key)).get();
+    key++;
+    PRODUCER.sendRecord(topicName, 1, String.valueOf(key), String.valueOf(key)).get();
+
+    consumer.pause(Arrays.asList(partition0));
+    ConsumerRecords<String, String>  records3_partition0 = consumer.poll(Duration.ofMillis(200));
+    assertEquals(0, records3_partition0.count());
+
+    ConsumerRecords<String, String>  records3_partition1 = consumer.poll(Duration.ofMillis(200));
+    assertEquals(1, records3_partition1.count());
+    assertEquals("5", records3_partition1.records(partition1).get(0).value());
+
+    key++;
+    PRODUCER.sendRecord(topicName, 0, String.valueOf(key), String.valueOf(key)).get();
+    key++;
+    PRODUCER.sendRecord(topicName, 1, String.valueOf(key), String.valueOf(key)).get();
+
+    consumer.resume(Arrays.asList(partition0));
+
+    ConsumerRecords<String, String>  records4_partition0 = consumer.poll(Duration.ofMillis(200));
+    assertEquals(2, records4_partition0.count());
+    assertEquals("5", records4_partition0.records(partition1).get(0).value());
+    assertEquals("7", records4_partition0.records(partition1).get(0).value());
+
+    ConsumerRecords<String, String>  records4_partition1 = consumer.poll(Duration.ofMillis(200));
+    assertEquals(1, records4_partition1.count());
+    assertEquals("6", records4_partition1.records(partition1).get(0).value());
+
   }
 
-  @Test
-  void testSeek() {
-    kafkaTestHelper.produceRecords(TOPIC_NAME, PARTITION_COUNT, RECORD_COUNT);
-    KafkaConsumerUtil<String, String> consumerUtil =
-        new KafkaConsumerUtil<>(consumerProps, TOPIC_NAME);
-
-    consumerUtil.seek(new TopicPartition(TOPIC_NAME, 0), RECORD_COUNT - 1);
-    List<ConsumerRecord<String, String>> records = consumerUtil.consumeRecords();
-    assertEquals(PARTITION_COUNT, records.size());
-
-    consumerUtil.close();
-  }
-
-  @Test
-  void testAssign() {
-    kafkaTestHelper.produceRecords(TOPIC_NAME, PARTITION_COUNT, RECORD_COUNT);
-    KafkaConsumerUtil<String, String> consumerUtil = new KafkaConsumerUtil<>(consumerProps);
-
-    consumerUtil.assign(
-        Arrays.asList(new TopicPartition(TOPIC_NAME, 0), new TopicPartition(TOPIC_NAME, 1)));
-    List<ConsumerRecord<String, String>> records = consumerUtil.consumeRecords();
-    assertEquals(2 * RECORD_COUNT, records.size());
-
-    consumerUtil.close();
-  }
-
-  @Test
-  void testUnassign() {
-    kafkaTestHelper.produceRecords(TOPIC_NAME, PARTITION_COUNT, RECORD_COUNT);
-    KafkaConsumerUtil<String, String> consumerUtil =
-        new KafkaConsumerUtil<>(consumerProps, TOPIC_NAME);
-
-    consumerUtil.consumeRecords();
-    consumerUtil.unassign();
-
-    consumerUtil.seekToBeginning();
-    List<ConsumerRecord<String, String>> records = consumerUtil.consumeRecords();
-    assertEquals(PARTITION_COUNT * RECORD_COUNT, records.size());
-
-    consumerUtil.close();
-  }
-
-  @Test
-  void testPollWithTimeout() {
-    kafkaTestHelper.produceRecords(TOPIC_NAME, PARTITION_COUNT, RECORD_COUNT);
-    KafkaConsumerUtil<String, String> consumerUtil =
-        new KafkaConsumerUtil<>(consumerProps, TOPIC_NAME);
-
-    List<ConsumerRecord<String, String>> records = consumerUtil.poll(5000);
-    assertEquals(PARTITION_COUNT * RECORD_COUNT, records.size());
-
-    consumerUtil.close();
-  }
-
-  @Test
-  void testPollWithoutTimeout() {
-    kafkaTestHelper.produceRecords(TOPIC_NAME, PARTITION_COUNT, RECORD_COUNT);
-    KafkaConsumerUtil<String, String> consumerUtil =
-        new KafkaConsumerUtil<>(consumerProps, TOPIC_NAME);
-
-    List<ConsumerRecord<String, String>> records = consumerUtil.poll();
-    assertEquals(PARTITION_COUNT * RECORD_COUNT, records.size());
-
-    consumerUtil.close();
-  }
-
-  @Test
-  void testPauseResume() {
-    kafkaTestHelper.produceRecords(TOPIC_NAME, PARTITION_COUNT, RECORD_COUNT);
-    KafkaConsumerUtil<String, String> consumerUtil =
-        new KafkaConsumerUtil<>(consumerProps, TOPIC_NAME);
-
-    consumerUtil.pause();
-    List<ConsumerRecord<String, String>> records = consumerUtil.poll();
-    assertTrue(records.isEmpty());
-
-    consumerUtil.resume();
-    records = consumerUtil.consumeRecords();
-    assertEquals(PARTITION_COUNT * RECORD_COUNT, records.size());
-
-    consumerUtil.close();
-  }
-
- */
-
+  /**
+   * Creates a topic with only one partition and replication factor 1.
+   * @param topicName the name of the topic
+   */
   private void createDefaultTopic(String topicName) throws ExecutionException, InterruptedException {
-    ADMIN.createTopic(topicName, 1, REPLICATION_FACTOR);
+    createDefaultTopic(topicName, 1);
+  }
+
+  /**
+   *
+   * @param topicName the name of the topic
+   * @param partitions the number of partitions for the topic
+   */
+  private void createDefaultTopic(String topicName, int partitions) throws ExecutionException, InterruptedException {
+    ADMIN.createTopic(topicName, partitions, REPLICATION_FACTOR);
     topicPool.add(topicName);
   }
 
@@ -386,12 +405,17 @@ class KafkaConsumerUtilTest {
     props.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "100");
     return createConsumer(groupId, props);
   }
-  private KafkaConsumer<String, String> createControlledConsumer(String groupId) {
+  private KafkaConsumer<String, String> createManualConsumer() {
+    return createManualConsumer(null);
+  }
+  private KafkaConsumer<String, String> createManualConsumer(String groupId) {
     return createConsumer(groupId, new Properties());
   }
   private KafkaConsumer<String, String> createConsumer(String groupId, Properties props) {
     props.putAll((Properties) DEFAULT_PROPERTIES.clone());
-    props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+    if (groupId != null) {
+      props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+    }
     KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props);
     // Adding all the created consumers to a pool so that no consumer ends up not being closed.
     consumerPool.add(consumer);
