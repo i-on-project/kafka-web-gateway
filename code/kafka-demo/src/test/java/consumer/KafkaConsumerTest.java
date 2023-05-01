@@ -12,7 +12,6 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
 import java.util.*;
@@ -20,7 +19,7 @@ import java.util.concurrent.ExecutionException;
 
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class KafkaConsumerUtilTest {
+class KafkaConsumerTest {
   private static final String TOPIC_NAME = "test-topic";
   private static final int PARTITION_COUNT = 3;
   private static final short REPLICATION_FACTOR = 1;

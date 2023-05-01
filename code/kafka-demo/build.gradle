@@ -20,6 +20,10 @@ dependencies {
     // Checkstyle
     implementation group: 'com.puppycrawl.tools', name: 'checkstyle', version: '10.9.3'
 
+
+    // https://mvnrepository.com/artifact/org.slf4j/slf4j-api
+    implementation 'org.slf4j:slf4j-api:2.0.7'
+
     // sl4j simple
     testImplementation group: 'org.slf4j', name: 'slf4j-simple', version: '2.0.7'
 }

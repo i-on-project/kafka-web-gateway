@@ -1,17 +1,11 @@
 package useCases;
 
-import com.isel.ps.admin.KafkaAdminUtil;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.serialization.StringDeserializer;
-import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.*;
-
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import utils.KafkaTestUtils;
 
 import java.time.Duration;
 import java.util.*;
@@ -19,36 +13,24 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static com.isel.ps.KafkaClientsHelper.BOOTSTRAP_SERVERS;
-
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class BattleshipUseCaseTest {
-    private static final short REPLICATION_FACTOR = 1;
-    private final KafkaAdminUtil ADMIN = new KafkaAdminUtil(BOOTSTRAP_SERVERS);
-
-    private final ArrayList<KafkaConsumer> consumerPool = new ArrayList<>();
-    private final ArrayList<KafkaProducer> producerPool = new ArrayList<>();
-    private final ArrayList<String> topicPool = new ArrayList<>();
     ExecutorService executor = Executors.newFixedThreadPool(15);
+    KafkaTestUtils kafkaTestUtils;
 
     @BeforeAll
     void setUp() {
-
+        kafkaTestUtils = new KafkaTestUtils();
     }
 
     @AfterAll
     void tearDown() {
-        consumerPool.forEach(KafkaConsumer::close);
-        producerPool.forEach(KafkaProducer::close);
-        ADMIN.deleteTopics(topicPool);
-        ADMIN.closeAdminClient();
+        kafkaTestUtils.reset();
     }
 
     @AfterEach
     void tearEachDown() {
-        consumerPool.forEach(KafkaConsumer::close);
-        producerPool.forEach(KafkaProducer::close);
-        ADMIN.deleteTopics(topicPool);
+        kafkaTestUtils.stop();
     }
 
     /**
@@ -68,7 +50,7 @@ public class BattleshipUseCaseTest {
 
         // Partition 1 will be plays suggested by players.
         // Partition 2 will be validated plays.
-        createDefaultTopic(playsTopicName, 2);
+        kafkaTestUtils.createDefaultTopic(playsTopicName, 2);
 
         Thread.sleep(2000);
         TopicPartition plays = new TopicPartition(playsTopicName, 0);
@@ -90,7 +72,7 @@ public class BattleshipUseCaseTest {
      * @param latch       synchronizer responsible for triggering the end of the test only when all workers end.
      */
     private void playsWatcher(TopicPartition plays, TopicPartition validPlays, CountDownLatch latch) {
-        KafkaConsumer<String, String> consumer = createConsumer(null);
+        KafkaConsumer<String, String> consumer = kafkaTestUtils.createConsumer(null);
 
         consumer.assign(List.of(plays, validPlays));
         consumer.seekToBeginning(List.of(plays, validPlays));
@@ -118,8 +100,8 @@ public class BattleshipUseCaseTest {
      * @param latch       synchronizer responsible for triggering the end of the test only when all workers end.
      */
     private void playsPlayer(TopicPartition plays, TopicPartition validPlays, String id, boolean firstToPlay, CountDownLatch latch) {
-        KafkaConsumer<String, String> consumer = createConsumer(null);
-        KafkaProducer<String, String> producer = createProducer();
+        KafkaConsumer<String, String> consumer = kafkaTestUtils.createConsumer(null);
+        KafkaProducer<String, String> producer = kafkaTestUtils.createProducer();
 
         consumer.assign(Collections.singleton(validPlays));
         consumer.seekToBeginning(Collections.singleton(validPlays));
@@ -179,8 +161,8 @@ public class BattleshipUseCaseTest {
      * @param latch       synchronizer responsible for triggering the end of the test only when all workers end.
      */
     private void playsValidator(TopicPartition plays, TopicPartition validPlays, CountDownLatch latch) {
-        KafkaConsumer<String, String> validatorConsumer = createConsumer(null);
-        KafkaProducer<String, String> validatorProducer = createProducer();
+        KafkaConsumer<String, String> validatorConsumer = kafkaTestUtils.createConsumer(null);
+        KafkaProducer<String, String> validatorProducer = kafkaTestUtils.createProducer();
 
         validatorConsumer.assign(Collections.singleton(plays));
         validatorConsumer.seekToBeginning(Collections.singleton(plays));
@@ -214,7 +196,7 @@ public class BattleshipUseCaseTest {
         CountDownLatch finalLatch = new CountDownLatch(numberOfPlayers + 1);
 
         String topicName = "matchmaking-topic";
-        createDefaultTopic(topicName, 2);
+        kafkaTestUtils.createDefaultTopic(topicName, 2);
         TopicPartition seekersPool = new TopicPartition(topicName, 0);
         TopicPartition createdMatches = new TopicPartition(topicName, 1);
 
@@ -238,8 +220,8 @@ public class BattleshipUseCaseTest {
             throw new RuntimeException(e);
         }
 
-        KafkaConsumer<String, String> consumer = createConsumer(null);
-        KafkaProducer<String, String> producer = createProducer();
+        KafkaConsumer<String, String> consumer = kafkaTestUtils.createConsumer(null);
+        KafkaProducer<String, String> producer = kafkaTestUtils.createProducer();
         String playerId = "player " + id;
 
         producer.send(new ProducerRecord<>(seekersPool.topic(), seekersPool.partition(), playerId, playerId));
@@ -283,7 +265,7 @@ public class BattleshipUseCaseTest {
         // Unfortunately allows duplicates but that's not the focus here.
         BlockingQueue<String> currentSeekers = new LinkedBlockingQueue<>();
 
-        KafkaConsumer<String, String> consumer = createConsumer(null);
+        KafkaConsumer<String, String> consumer = kafkaTestUtils.createConsumer(null);
         consumer.assign(Collections.singleton(seekersPool));
         consumer.seekToBeginning(Collections.singleton(seekersPool));
 
@@ -303,7 +285,7 @@ public class BattleshipUseCaseTest {
     }
 
     private void matchMakerProducer(Phaser phaser, BlockingQueue<String> currentSeekers, TopicPartition createdMatches) {
-        KafkaProducer<String, String> producer = createProducer();
+        KafkaProducer<String, String> producer = kafkaTestUtils.createProducer();
 
         String playerA = null;
         String playerB = null;
@@ -330,41 +312,5 @@ public class BattleshipUseCaseTest {
         }
 
         phaser.arrive();
-    }
-
-    /**
-     *
-     * @param topicName the name of the topic
-     * @param partitions the number of partitions for the topic
-     */
-    private void createDefaultTopic(String topicName, int partitions) throws ExecutionException, InterruptedException {
-        ADMIN.createTopic(topicName, partitions, REPLICATION_FACTOR);
-        topicPool.add(topicName);
-    }
-
-    private KafkaConsumer<String, String> createConsumer(String groupId) {
-        Properties props = new Properties();
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        if (groupId != null) {
-            props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
-        }
-        KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props);
-        // Adding all the created consumers to a pool so that no consumer ends up not being closed.
-        consumerPool.add(consumer);
-        return consumer;
-    }
-
-    private KafkaProducer<String, String> createProducer() {
-        Properties props = new Properties();
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
-        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        KafkaProducer<String, String> producer = new KafkaProducer<>(props);
-        // Adding all the created producers to a pool so that no producer ends up not being closed.
-        producerPool.add(producer);
-        return producer;
-
     }
 }
