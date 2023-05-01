@@ -155,3 +155,4 @@ fabric.properties
 hs_err_pid*
 replay_pid*
 /code/kafka-web-gateway/.idea/
+!/temp/
