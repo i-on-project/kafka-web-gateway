@@ -15,9 +15,8 @@ class WebSocketConfig(private val kafkaProducer: KafkaProducer<String, String>,
                       private val kafkaConsumer: KafkaConsumer<String, String>) : WebSocketConfigurer {
 
     override fun registerWebSocketHandlers(registry: WebSocketHandlerRegistry) {
-        registry.addHandler(myWebSocketHandler(), "/{topic}/{key}")
+        registry.addHandler(myWebSocketHandler(), "/socket")
                 .setAllowedOrigins("*")
-                .withSockJS()
     }
 
     @Bean
