@@ -3,12 +3,13 @@ package com.isel.ps.gateway.websocket
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.web.socket.*
 import java.time.Duration
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import org.slf4j.Logger
+
 
 class MyWebSocketHandler(
         private val kafkaProducer: KafkaProducer<String, String>,
