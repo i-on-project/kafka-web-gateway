@@ -33,7 +33,6 @@ class MyWebSocketHandler(
     override fun handleMessage(session: WebSocketSession, message: WebSocketMessage<*>) {
         log.debug("Began handleMessage.")
         val payload = message.payload as String
-        // Assuming jsonStr is a string containing a valid JSON object representing a command
         val objectMapper = jacksonObjectMapper()
         val clientMessage = objectMapper.readValue(payload, ClientMessage::class.java)
 
