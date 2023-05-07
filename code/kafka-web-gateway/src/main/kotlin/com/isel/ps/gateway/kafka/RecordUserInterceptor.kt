@@ -1,7 +1,6 @@
 package com.isel.ps.gateway.kafka
 
-import com.isel.ps.gateway.Utils.Companion.GATEWAY_MESSAGE_ID
-import com.isel.ps.gateway.model.GatewayTypes
+import com.isel.ps.gateway.model.GatewayTypes.GatewayConsumerRecord
 import org.apache.kafka.clients.consumer.ConsumerInterceptor
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.ConsumerRecords
@@ -20,7 +19,7 @@ class RecordUserInterceptor : ConsumerInterceptor<String, String> {
         val filteredRecords = mutableMapOf<TopicPartition, MutableList<ConsumerRecord<String, String>>>()
         for (record in records) {
 
-            val recordParsed = GatewayTypes.GatewayConsumerRecord.build(record)
+            val recordParsed = GatewayConsumerRecord.build(record)
 
             if (userId == recordParsed.key) {
                 filteredRecords.merge(

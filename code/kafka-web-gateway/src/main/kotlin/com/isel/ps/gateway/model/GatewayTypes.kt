@@ -49,7 +49,7 @@ class GatewayTypes {
 
     /**
      * Schema for messages to produce into Kafka topics via the WebSocket
-     * Proxy.
+     * Gateway.
      *
      * @param key
      *   The message key.
@@ -84,7 +84,7 @@ class GatewayTypes {
     )
 
     /**
-     * Schema to use when committing consumed Kafka messages through an outbound
+     * Schema to use when committing consumed Kafka messages through an
      * WebSocket.
      *
      * @param gatewayMessageID
@@ -97,11 +97,11 @@ class GatewayTypes {
 
     data class ClientMessage(val type: String, val command: Command)
 
-    data class Subscribe(val topics: List<TopicType>, val startConsuming: Boolean) : Command("subscribe")
+    data class Subscribe(val topics: List<TopicType>, val startConsuming: Boolean = false) : Command("subscribe")
 
-    data class Consume(val maxQuantity: Int, val scale: String) : Command("consume")
+    data class Consume(val maxQuantity: Int?, val scale: String?) : Command("consume")
 
-    data class Publish(val topic: String, val partition: Int, val key: String, val value: String) : Command("publish")
+    data class Publish(val topic: String, val partition: Int?, val key: String, val value: String) : Command("publish")
 
     data class Pause(val topics: List<TopicType>) : Command("pause")
 
