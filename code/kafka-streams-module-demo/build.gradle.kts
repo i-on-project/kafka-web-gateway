@@ -19,6 +19,11 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-web")
 	implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
+
+	// Kafka
+	implementation("org.apache.kafka:kafka-clients:3.4.0")
+	implementation("org.apache.kafka:kafka-streams:3.4.0")
+
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 }
 
