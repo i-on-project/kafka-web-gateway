@@ -28,4 +28,9 @@ class Controller(private val streamsHandler: KStreamsHandler) {
     fun loggerStream() {
         streamsHandler.loggerStream()
     }
+
+    @PostMapping("/logger-consumer")
+    fun loggerConsumer() {
+        streamsHandler.loggerConsumer()
+    }
 }
