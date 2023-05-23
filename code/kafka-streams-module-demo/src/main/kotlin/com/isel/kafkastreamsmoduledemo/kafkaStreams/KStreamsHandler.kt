@@ -1,47 +1,46 @@
 package com.isel.kafkastreamsmoduledemo.kafkaStreams
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import com.isel.kafkastreamsmoduledemo.utiils.KafkaStreamsUtils
+import com.isel.kafkastreamsmoduledemo.utiils.KafkaStreamsUtils.Companion.KEY_FILTER_STORE
 import com.isel.kafkastreamsmoduledemo.utiils.TopicKeys
 import com.isel.kafkastreamsmoduledemo.utiils.TopicKeysArraySerDe
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.ProducerConfig
-import org.apache.kafka.common.errors.SerializationException
 import org.apache.kafka.common.serialization.*
 import org.apache.kafka.common.utils.Bytes
 import org.apache.kafka.streams.KafkaStreams
+import org.apache.kafka.streams.StoreQueryParameters
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
-import org.apache.kafka.streams.kstream.Consumed
-import org.apache.kafka.streams.kstream.KStream
+import org.apache.kafka.streams.kstream.*
 import org.apache.kafka.streams.processor.RecordContext
-import org.apache.kafka.streams.processor.To
 import org.apache.kafka.streams.processor.api.Processor
 import org.apache.kafka.streams.processor.api.ProcessorContext
 import org.apache.kafka.streams.processor.api.Record
 import org.apache.kafka.streams.state.KeyValueStore
-import org.apache.kafka.streams.state.Stores
+import org.apache.kafka.streams.state.QueryableStoreType
+import org.apache.kafka.streams.state.QueryableStoreTypes
+import org.apache.kafka.streams.state.ReadOnlyKeyValueStore
+import org.apache.kafka.streams.state.ValueAndTimestamp
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import java.time.Duration
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.concurrent.thread
 
 
 @Component
 class KStreamsHandler(
     @Value("\${spring.kafka.bootstrap-servers}")
-    private val bootstrapServers: String // TODO: maybe change to db or kafka topic
+    private val bootstrapServers: String, // TODO: maybe change to db or kafka topic
+    private val utils: KafkaStreamsUtils
 ) {
 
     private lateinit var plannerStream: KafkaStreams
-    private val streamsMap: ConcurrentHashMap<String, KafkaStreams> = ConcurrentHashMap()
     private var testGatewayKeys: ConcurrentHashMap<String, Array<TopicKeys>> = ConcurrentHashMap()
-
     companion object {
-        private val KEY_FILTER_STORE = "key-filter-store"
-        private val KEY_FILTER_TOPIC = "key-filter-topic"
-        private val DEFAULT_STREAM_ID = "gateway-topics-filter-stream"
 
 
         // Processor that keeps the global store updated.
@@ -76,6 +75,36 @@ class KStreamsHandler(
             plannerStream.store(KEY_FILTER_STORE, QueryableStoreTypes.keyValueStore())
         }
         plannerStream = KafkaStreams(builder.build(), getStreamDefaultProperties())*/
+
+        // TODO: delete after use -> these mock values
+        testGatewayKeys.put("gateway01", arrayOf(
+            TopicKeys("topicA", arrayOf(
+                1L, 0L
+            ))
+        ))
+        testGatewayKeys.put("gateway02", arrayOf(
+            TopicKeys("topicA", arrayOf(
+                2L, 0L
+            ))
+        ))
+
+        loggerConsumer(listOf("gateway01", "gateway02", "gateway03"))
+    }
+
+    fun insertToGatewayKeys(gateway: String) {
+        testGatewayKeys.put("gateway03", arrayOf(
+            TopicKeys("topicA", arrayOf(
+                3L, 0L
+            ))
+        ))
+    }
+
+    fun addNewKeyToGateway01() {
+        testGatewayKeys.put("gateway01", arrayOf(
+            TopicKeys("topicA", arrayOf(
+                1L, 0L, 4L
+            ))
+        ))
     }
 
     class IsNewTopicProcessor: Processor<String, Array<TopicKeys>, String, Array<TopicKeys>> {
@@ -101,45 +130,96 @@ class KStreamsHandler(
         val inputStream: KStream<Long, String> = builder.stream(topic, Consumed.with(Serdes.Long(), Serdes.String()))
 
         // TODO: hardcoded the position 0 as a fix should be thought of to send the record to more than one topic
-        inputStream.to {key, value, recordContext -> gatewayKeyFilter(key, value, recordContext)[0]}
+        /* try {
+            inputStream.to { key, value, recordContext ->
+                gatewayKeyFilter(
+                    key,
+                    value,
+                    topic
+                ).find { topic -> true }
+            }
+        } catch (ex: NullPointerException) {
+            println("Possibly another orphan record")
+        } */
+        /* inputStream.peek{key, value -> // TODO: test this option
+            for (entry in testGatewayKeys) {
+                for (topicKeysArray in entry.value) {
+                    if (topicKeysArray.keys.contains(key)) {
+                        inputStream.selectKey { key, value ->  key}.to(topicKeysArray.topic)
 
-        val stream = KafkaStreams(builder.build(), getStreamDefaultProperties())
-        streamsMap.put(topic ,stream)
+                    }
+                }
+            }
+        } */
+
+        /* val branched: BranchedKStream<Long, String> = inputStream.split()
+        for (gatewayEntry in testGatewayKeys) {
+            println("for gateway entry [${gatewayEntry.key}]")
+            branched.branch(
+                { k: Long, v: String -> isKeyForGateway(k, gatewayEntry.key, topic) },
+                Branched.withConsumer { ks -> ks.to(gatewayEntry.key)}
+            )
+        } */
+
+        for (gatewayEntry in testGatewayKeys) {
+            inputStream.filter {key, value -> isKeyForGateway(key, gatewayEntry.key, topic)}.to(gatewayEntry.key)
+        }
+
+        val stream = KafkaStreams(builder.build(), utils.getStreamDefaultProperties())
+        utils.streamsMap.put(topic ,stream)
+
+        stream.cleanUp()
+        stream.start()
+
+        Runtime.getRuntime().addShutdownHook(Thread(stream::close))
         println("startGatewayFiltersStream function ending")
     }
 
 
 
-
-    private fun gatewayKeyFilter(key: Long, value: String, recordContext: RecordContext): Array<String> {
-        val outputTopics: Array<String> = emptyArray()
-        for (entry in testGatewayKeys) {
-            for (topicKeysArray in entry.value) {
-                if (topicKeysArray.keys.contains(key)) {
-                    outputTopics.plus(topicKeysArray.topic)
+    private fun isKeyForGateway(key: Long, gateway: String, topic: String): Boolean {
+        println("STARTING isKeyForGateway")
+        if (testGatewayKeys[gateway].isNullOrEmpty()) {
+            return false
+        }
+        for (topicKeys in testGatewayKeys[gateway]!!) {
+            if (topicKeys.topic == topic) {
+                for (topicKey in topicKeys.keys) {
+                    if (topicKey == key) {
+                        println("isKeyForGateway returning true key[$key] topic[$topic] gateway[$gateway]")
+                        return true
+                    }
                 }
             }
         }
-        return outputTopics
+        return false
     }
 
-    private fun getStreamDefaultProperties(): Properties {
-        val props = Properties()
-        props.put(StreamsConfig.APPLICATION_ID_CONFIG, DEFAULT_STREAM_ID)
-        props.put(ProducerConfig.LINGER_MS_CONFIG, 1) // This value is only for testing, should be around maybe 20 or more in production. Default is 100
-        props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
-        props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.Long().javaClass)
-        props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().javaClass)
-        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest")
-        return props
+    private fun gatewayKeyFilter(key: Long, value: String, inputTopic: String): ArrayList<String> {
+        val outputTopics: ArrayList<String> = ArrayList()
+        println("started filtering a value")
+
+        for (gatewayEntry in testGatewayKeys) {
+            println("searching for ${gatewayEntry.key}")
+            val gatewayTopicKeys = gatewayEntry.value.find { topicKeys: TopicKeys ->  topicKeys.topic == inputTopic}
+            for (gatewayTopicKey in gatewayTopicKeys?.keys!!) {
+                if (gatewayTopicKey == key) {
+                    println("found key:[$key] for ${gatewayEntry.key}")
+                    outputTopics.add(gatewayEntry.key)
+                    break
+                }
+            }
+        }
+        println("nr of output topics is ${outputTopics.count()}")
+        return outputTopics
     }
 
     fun startStreaming(id: String): String {
         println("startStreaming id: [$id]")
 
-        if (streamsMap.contains(id)) {
-            streamsMap.get(id)?.close()
-            streamsMap.remove(id)
+        if (utils.streamsMap.contains(id)) {
+            utils.streamsMap.get(id)?.close()
+            utils.streamsMap.remove(id)
             println("startStreaming id: [$id] -> stream already existed, re-writing..")
         }
 
@@ -172,7 +252,7 @@ class KStreamsHandler(
 
         val topology = builder.build()
         val streams = KafkaStreams(topology, props)
-        streamsMap.put(id, streams)
+        utils.streamsMap.put(id, streams)
 
         streams.cleanUp()
         streams.start()
@@ -190,11 +270,11 @@ class KStreamsHandler(
         }
     }
 
-    fun loggerConsumer() {
+    final fun loggerConsumer(topics: List<String> = listOf("even", "uneven")) {
 
-        if (streamsMap.contains("logger-stream")) {
-            streamsMap.get("logger-stream")?.close()
-            streamsMap.remove("logger-stream")
+        if (utils.streamsMap.contains("logger-stream")) {
+            utils.streamsMap.get("logger-stream")?.close()
+            utils.streamsMap.remove("logger-stream")
             return
         }
 
@@ -205,25 +285,26 @@ class KStreamsHandler(
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer::class.java.name)
         val consumer: KafkaConsumer<Long, String> = KafkaConsumer(props)
 
-        consumer.subscribe(listOf("even", "uneven"))
+        consumer.subscribe(topics)
 
-
-
-        while (true) {
-            consumer.poll(Duration.ofSeconds(5)).forEach { record ->
-                println("[${System.currentTimeMillis()}] - Consumer key: [${record.key()}] and value[${record.value()}] from topic:[${record.topic()}] and timestamp [${record.timestamp()}]")
+        thread {
+            while (true) {
+                consumer.poll(Duration.ofSeconds(5)).forEach { record ->
+                    println("[${System.currentTimeMillis()}] - Consumer key: [${record.key()}] and value[${record.value()}] from topic:[${record.topic()}] and timestamp [${record.timestamp()}]")
+                }
             }
         }
+
     }
 
     fun closeConsumerLogger() {
-        streamsMap.remove("logger-stream")
+        utils.streamsMap.remove("logger-stream")
     }
 
     fun loggerStream() {
-        if (streamsMap.contains("logger-stream")) {
-            streamsMap.get("logger-stream")?.close()
-            streamsMap.remove("logger-stream")
+        if (utils.streamsMap.contains("logger-stream")) {
+            utils.streamsMap.get("logger-stream")?.close()
+            utils.streamsMap.remove("logger-stream")
             return
         }
 
@@ -249,7 +330,7 @@ class KStreamsHandler(
 
         val topology = builder.build()
         val streams = KafkaStreams(topology, props)
-        streamsMap.put("logger-stream", streams)
+        utils.streamsMap.put("logger-stream", streams)
 
         streams.cleanUp()
         streams.start()
@@ -257,7 +338,7 @@ class KStreamsHandler(
 
     fun closeStream(id: String): String {
         println("closeStream id: [$id]")
-        return if(streamsMap.remove(id) != null) "removed" else "no key"
+        return if(utils.streamsMap.remove(id) != null) "removed" else "no key"
     }
 
 
