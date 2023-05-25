@@ -189,8 +189,6 @@ class SendTask(
     private val logger: Logger
 ) : TimerTask() {
     override fun run() {
-        logger.info("messageStatuses[userId]?.get(messageId): ${messageStatuses[userId]?.get(messageId)}")
-        logger.info("userId: $userId messageId: $messageId")
         if (messageStatuses[userId]?.get(messageId) != true && remainingRetries > 0) {
             session.sendMessage(textMessage)
             rescheduleTask(remainingRetries - 1)
