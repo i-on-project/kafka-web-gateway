@@ -10,65 +10,91 @@
 <noscript><h2 style="color: #ff0000">Seems your browser doesn't support Javascript! Websocket relies on Javascript being
     enabled. Please enable
     Javascript and reload this page!</h2></noscript>
-<div id="main-content" class="container">
-    <div class="row">
-        <div class="col-md-6">
-            <form class="form-inline">
-                <div class="form-group">
-                    <label for="url">Websocket address:</label>
-                    <input type="text" id="url" class="form-control" placeholder="URL..." value="ws://localhost:8080/socket">
-                    <label for="connect">WebSocket connection:</label>
-                    <button id="connect" class="btn btn-default" type="button">Connect</button>
-                    <button id="disconnect" class="btn btn-default" type="button" disabled="disabled">Disconnect
-                    </button>
-                </div>
-            </form>
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title">WebSocket Client</h5>
         </div>
-    </div>
-    <div class="row">
-        <div class="col-md-6">
-            <h3>Subscribe:</h3>
-            <form class="form-inline">
-                <div class="form-group">
-                    <label for="subscribe-topic">Topic</label>
-                    <input type="text" id="subscribe-topic" class="form-control" placeholder="topic-name">
-                    <label for="subscribe-offset">Offset</label>
-                    <input type="number" id="subscribe-offset" class="form-control" placeholder="0 or above">
-                </div>
-                <button id="subscribe" class="btn btn-default" type="button" disabled="disabled">Send</button>
-            </form>
-        </div>
-    </div>
-    <div class="row">
-        <div class="col-md-6">
-            <h3>Produce:</h3>
-            <form class="form-inline">
-                <div class="form-group">
-                    <label for="produce-topic">Topic</label>
-                    <input type="text" id="produce-topic" class="form-control" placeholder="topic-name">
-                    <label for="produce-key">Key</label>
-                    <input type="text" id="produce-key" class="form-control" placeholder="some-key">
-                    <label for="produce-value">Value</label>
-                    <input type="text" id="produce-value" class="form-control" placeholder="some-value">
-                </div>
-                <button id="produce" class="btn btn-default" type="button" disabled="disabled">Send</button>
-            </form>
-        </div>
-    </div>
-    <div class="row">
-        <div class="col-md-12">
-            <table id="conversation" class="table table-striped">
-                <thead>
-                <tr>
-                    <th>Records</th>
-                </tr>
-                </thead>
-                <tbody id="records">
-                </tbody>
-            </table>
+        <div class="card-body">
+            <div class="form-group">
+                <label for="subscribeTopics">Subscribe Topics:</label>
+                <input type="text" class="form-control" id="subscribeTopics" placeholder="Enter topics">
+                <small class="form-text text-muted">Separate multiple topics with commas.</small>
+            </div>
+            <button class="btn btn-primary" onclick="subscribe()">Subscribe</button>
         </div>
     </div>
 
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="card-title">Consume</h5>
+        </div>
+        <div class="card-body">
+            <div class="form-group">
+                <label for="consumeQuantity">Max Quantity:</label>
+                <input type="number" class="form-control" id="consumeQuantity" placeholder="Enter max quantity">
+            </div>
+            <div class="form-group">
+                <label for="consumeScale">Scale:</label>
+                <input type="text" class="form-control" id="consumeScale" placeholder="Enter scale">
+            </div>
+            <button class="btn btn-primary" onclick="consume()">Consume</button>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="card-title">Publish</h5>
+        </div>
+        <div class="card-body">
+            <div class="form-group">
+                <label for="publishTopic">Topic:</label>
+                <input type="text" class="form-control" id="publishTopic" placeholder="Enter topic">
+            </div>
+            <div class="form-group">
+                <label for="publishKey">Key:</label>
+                <input type="text" class="form-control" id="publishKey" placeholder="Enter key">
+            </div>
+            <div class="form-group">
+                <label for="publishValue">Value:</label>
+                <input type="text" class="form-control" id="publishValue" placeholder="Enter value">
+            </div>
+            <button class="btn btn-primary" onclick="publish()">Publish</button>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="card-title">Pause</h5>
+        </div>
+        <div class="card-body">
+            <div class="form-group">
+                <label for="pauseTopics">Topics:</label>
+                <input type="text" class="form-control" id="pauseTopics" placeholder="Enter topics">
+                <small class="form-text text-muted">Separate multiple topics with commas.</small>
+            </div>
+            <button class="btn btn-primary" onclick="pause()">Pause</button>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="card-title">Resume</h5>
+        </div>
+        <div class="card-body">
+            <div class="form-group">
+                <label for="resumeTopics">Topics:</label>
+                <input type="text" class="form-control" id="resumeTopics" placeholder="Enter topics">
+                <small class="form-text text-muted">Separate multiple topics with commas.</small>
+            </div>
+            <button class="btn btn-primary" onclick="resume()">Resume</button>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <h5>Output:</h5>
+        <ul id="output" class="list-group"></ul>
+    </div>
 </div>
 </body>
 </html>
