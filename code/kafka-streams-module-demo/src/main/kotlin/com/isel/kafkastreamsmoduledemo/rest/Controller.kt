@@ -1,20 +1,35 @@
 package com.isel.kafkastreamsmoduledemo.rest
 
-import com.isel.kafkastreamsmoduledemo.kafkaStreams.GlobalKTables
-import com.isel.kafkastreamsmoduledemo.kafkaStreams.KStreamsHandler
-import com.isel.kafkastreamsmoduledemo.utiils.KafkaStreamsUtils.Companion.DEFAULT_STREAM_ID
-import org.apache.kafka.streams.Topology
+import com.isel.kafkastreamsmoduledemo.kafkaStreamsExperimentations.GlobalKTables
+import com.isel.kafkastreamsmoduledemo.kafkaStreamsExperimentations.KStreamsHandler
+import com.isel.kafkastreamsmoduledemo.kafkaStreamsExperimentations.UseCase
+import com.isel.kafkastreamsmoduledemo.utils.KafkaStreamsUtils.Companion.DEFAULT_STREAM_ID
 import org.springframework.web.bind.annotation.*
-import java.lang.Long
-import java.lang.Long.parseLong
 
 @RestController
-class Controller(private val streamsHandler: KStreamsHandler, private val globalKTables: GlobalKTables) {
+class Controller(
+    private val streamsHandler: KStreamsHandler,
+    private val globalKTables: GlobalKTables,
+    private val useCase: UseCase
+) {
 
     @GetMapping("/test")
     fun testEndpoint(): String {
         println("this is the controller")
         return "yes, hello"
+    }
+
+    @PostMapping("/use-case-start")
+    fun useCaseStart() {
+        println("Starting use case")
+        useCase.startStreamUsingStore("use-case-a")
+        useCase.startStreamUsingStore("use-case-b")
+        println("Ending use case")
+    }
+
+    @PostMapping("/use-case-stream-metrics")
+    fun useCaseStreamMetrics() {
+
     }
 
     @PostMapping("/start-stream-evens/{id}")
@@ -79,5 +94,7 @@ class Controller(private val streamsHandler: KStreamsHandler, private val global
     fun printGlobalTable() {
         globalKTables.printGlobalTable()
     }
+
+
 
 }

@@ -1,16 +1,13 @@
-package com.isel.kafkastreamsmoduledemo.kafkaStreams
+package com.isel.kafkastreamsmoduledemo.kafkaStreamsExperimentations
 
-import com.isel.kafkastreamsmoduledemo.utiils.KafkaStreamsUtils
-import com.isel.kafkastreamsmoduledemo.utiils.KafkaStreamsUtils.Companion.KEY_FILTER_STORE
-import com.isel.kafkastreamsmoduledemo.utiils.TopicKeys
-import com.isel.kafkastreamsmoduledemo.utiils.TopicKeysArraySerDe
+import com.isel.kafkastreamsmoduledemo.utils.KafkaStreamsUtils
+import com.isel.kafkastreamsmoduledemo.utils.KafkaStreamsUtils.Companion.KEY_FILTER_STORE
+import com.isel.kafkastreamsmoduledemo.utils.TopicKeys
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.*
-import org.apache.kafka.common.utils.Bytes
 import org.apache.kafka.streams.KafkaStreams
-import org.apache.kafka.streams.StoreQueryParameters
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
 import org.apache.kafka.streams.kstream.*
@@ -19,10 +16,6 @@ import org.apache.kafka.streams.processor.api.Processor
 import org.apache.kafka.streams.processor.api.ProcessorContext
 import org.apache.kafka.streams.processor.api.Record
 import org.apache.kafka.streams.state.KeyValueStore
-import org.apache.kafka.streams.state.QueryableStoreType
-import org.apache.kafka.streams.state.QueryableStoreTypes
-import org.apache.kafka.streams.state.ReadOnlyKeyValueStore
-import org.apache.kafka.streams.state.ValueAndTimestamp
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import java.time.Duration
@@ -271,30 +264,7 @@ class KStreamsHandler(
     }
 
     final fun loggerConsumer(topics: List<String> = listOf("even", "uneven")) {
-
-        if (utils.streamsMap.contains("logger-stream")) {
-            utils.streamsMap.get("logger-stream")?.close()
-            utils.streamsMap.remove("logger-stream")
-            return
-        }
-
-        val props = Properties()
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, "fu")
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, LongDeserializer::class.java.name)
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer::class.java.name)
-        val consumer: KafkaConsumer<Long, String> = KafkaConsumer(props)
-
-        consumer.subscribe(topics)
-
-        thread {
-            while (true) {
-                consumer.poll(Duration.ofSeconds(5)).forEach { record ->
-                    println("[${System.currentTimeMillis()}] - Consumer key: [${record.key()}] and value[${record.value()}] from topic:[${record.topic()}] and timestamp [${record.timestamp()}]")
-                }
-            }
-        }
-
+        utils.loggerConsumer(topics)
     }
 
     fun closeConsumerLogger() {

@@ -1,8 +1,11 @@
-package com.isel.kafkastreamsmoduledemo.utiils
+package com.isel.kafkastreamsmoduledemo.utils
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.ProducerConfig
+import org.apache.kafka.common.MetricName
+import org.apache.kafka.common.MetricNameTemplate
 import org.apache.kafka.common.errors.SerializationException
 import org.apache.kafka.common.serialization.*
 import org.apache.kafka.streams.KafkaStreams
@@ -13,8 +16,10 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
 import java.io.DataOutputStream
+import java.time.Duration
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.concurrent.thread
 
 @Component
 class KafkaStreamsUtils(
@@ -22,14 +27,36 @@ class KafkaStreamsUtils(
     private val bootstrapServers: String // TODO: maybe change to db or kafka topic
 ) {
     val streamsMap: ConcurrentHashMap<String, KafkaStreams> = ConcurrentHashMap()
+    val consumersMap: ConcurrentHashMap<String, KafkaConsumer<Any, Any>> = ConcurrentHashMap()
     companion object {
         val KEY_FILTER_STORE = "key-filter-store"
         val KEY_FILTER_TOPIC = "key-filter-topic"
-        const val DEFAULT_STREAM_ID = "gateway-topics-filter-stream"
+        const val DEFAULT_STREAM_ID = "gateway-id-0"
+        const val GREEN_TEXT = "\u001B[32m"
+        const val PURPLE_TEXT = "\u001B[35m"
+        const val YELLOW_TEXT = "\u001B[33m"
+        const val RESET_TEXT_COLOR = "\u001B[0m"
+
+        fun getTopologyMetrics(stream: KafkaStreams) {
+            stream.metrics().forEach {
+                if (it.key.name() == "topology-description") {
+                    printlnWithColor("${it.value.metricValue()}", PURPLE_TEXT)
+                }
+            }
+        }
+
+        fun printlnBetweenColoredLines(logContent: String, textColor: String = PURPLE_TEXT) {
+            println("${YELLOW_TEXT}******************************${RESET_TEXT_COLOR}")
+            println("${textColor}${logContent}${RESET_TEXT_COLOR}")
+            println("${YELLOW_TEXT}******************************${RESET_TEXT_COLOR}")
+        }
+        fun printlnWithColor(logContent: String, textColor: String = GREEN_TEXT) {
+            println("${textColor}${logContent}${RESET_TEXT_COLOR}")
+        }
     }
-    fun getStreamDefaultProperties(offsetConfig: String = "latest"): Properties {
+    fun getStreamDefaultProperties(offsetConfig: String = "latest", streamId: String = DEFAULT_STREAM_ID): Properties {
         val props = Properties()
-        props.put(StreamsConfig.APPLICATION_ID_CONFIG, DEFAULT_STREAM_ID)
+        props.put(StreamsConfig.APPLICATION_ID_CONFIG, streamId)
         props.put(ProducerConfig.LINGER_MS_CONFIG, 1) // This value is only for testing, should be around maybe 20 or more in production. Default is 100
         props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
         props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.Long().javaClass)
@@ -55,6 +82,37 @@ class KafkaStreamsUtils(
         props[ConsumerConfig.GROUP_ID_CONFIG] = groupId
         return props
     }
+
+    fun loggerConsumer(topics: List<String>) {
+        if (topics.isEmpty()) {
+            println("Failed to create a loggerConsumer as there were no topics provided..")
+            return
+        }
+
+        if (consumersMap.contains("logger-consumer")) {
+            consumersMap.get("logger-consumer")?.close()
+            consumersMap.remove("logger-consumer")
+            return
+        }
+
+        val props = Properties()
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, "logger-consumer")
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, LongDeserializer::class.java.name)
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer::class.java.name)
+        val consumer: KafkaConsumer<Long, String> = KafkaConsumer(props)
+
+        consumer.subscribe(topics)
+
+        thread {
+            while (true) {
+                consumer.poll(Duration.ofSeconds(5)).forEach { record ->
+                    logWithColor("[${System.currentTimeMillis()}] - Consumer key: [${record.key()}] and value[${record.value()}] from topic:[${record.topic()}] and timestamp [${record.timestamp()}]")
+                }
+            }
+        }
+
+    }
 }
 data class TopicKeys(
     val topic: String,
@@ -62,7 +120,7 @@ data class TopicKeys(
 ) {
 }
 
-class TopicKeysArrayDeserializer2: Deserializer<Array<TopicKeys>> {
+class TopicKeysArrayDeserializerTentative: Deserializer<Array<TopicKeys>> {
     private val objectMapper = ObjectMapper()
     override fun deserialize(topic: String?, data: ByteArray?): Array<TopicKeys>? {
         return try {
@@ -79,7 +137,7 @@ class TopicKeysArrayDeserializer2: Deserializer<Array<TopicKeys>> {
 
 }
 
-class TopicKeysArraySerializer2 : Serializer<Array<TopicKeys>> {
+class TopicKeysArraySerializerTentative : Serializer<Array<TopicKeys>> {
     private val objectMapper = ObjectMapper()
     override fun serialize(topic: String?, data: Array<TopicKeys>?): ByteArray? {
         return try {
@@ -108,22 +166,16 @@ class TopicKeysArrayDeserializer: Deserializer<Array<TopicKeys>> {
 
             while (dataInputStream.available() > 0) {
                 val topicStringLength: Int = dataInputStream.readInt()
-                println("topic")
                 val stringBuilder: StringBuilder = StringBuilder()
                 for (i in 1..topicStringLength) {
-                    println("char")
                     stringBuilder.append(dataInputStream.readChar())
                 }
                 val topic: String = stringBuilder.toString()
-                println("keynr")
                 val keyNr: Int = dataInputStream.readInt()
-                println("keys")
                 var keys: Array<Long> = emptyArray()
                 for (i in 1..keyNr) {
-                    println("key")
                     keys = keys.plus(dataInputStream.readLong())
                 }
-                println("adding")
                 result = result.plus(TopicKeys(topic, keys))
             }
             result
