@@ -63,7 +63,7 @@ class UseCase(
     }
 
     /**
-     * Creates or accesses the GlobalKTable responsible for storing the keys and topics to know to which gateway topic it goes.
+     * Creates and/or accesses the GlobalKTable responsible for storing the keys and topics to know to which gateway topic it goes.
      *
      */
     final fun startStore(): ReadOnlyKeyValueStore<String, ValueAndTimestamp<Array<TopicKeys>>> {
@@ -111,9 +111,7 @@ class UseCase(
         val inputStream: KStream<Long, String> = builder.stream(inputTopic, Consumed.with(Serdes.Long(), Serdes.String()))
 
         for (gatewayEntry in keyStorage.all().iterator()) {
-            println("${KafkaStreamsUtils.YELLOW_TEXT}************************************************************************************************************************${KafkaStreamsUtils.RESET_TEXT_COLOR}")
             KafkaStreamsUtils.printlnBetweenColoredLines("gateway entry key[${gatewayEntry.key}]", KafkaStreamsUtils.PURPLE_TEXT)
-            println("${KafkaStreamsUtils.YELLOW_TEXT}************************************************************************************************************************${KafkaStreamsUtils.RESET_TEXT_COLOR}")
 
             inputStream.filter {key, value -> isKeyForGateway(key, gatewayEntry.key, inputTopic)}.to(gatewayEntry.key)
         }

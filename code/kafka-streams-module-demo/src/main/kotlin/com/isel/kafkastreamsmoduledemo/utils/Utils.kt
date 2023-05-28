@@ -107,7 +107,7 @@ class KafkaStreamsUtils(
         thread {
             while (true) {
                 consumer.poll(Duration.ofSeconds(5)).forEach { record ->
-                    logWithColor("[${System.currentTimeMillis()}] - Consumer key: [${record.key()}] and value[${record.value()}] from topic:[${record.topic()}] and timestamp [${record.timestamp()}]")
+                    printlnWithColor("[${System.currentTimeMillis()}] - Consumer key: [${record.key()}] and value[${record.value()}] from topic:[${record.topic()}] and timestamp [${record.timestamp()}]")
                 }
             }
         }
@@ -120,38 +120,7 @@ data class TopicKeys(
 ) {
 }
 
-class TopicKeysArrayDeserializerTentative: Deserializer<Array<TopicKeys>> {
-    private val objectMapper = ObjectMapper()
-    override fun deserialize(topic: String?, data: ByteArray?): Array<TopicKeys>? {
-        return try {
-            if (data == null) {
-                println("Null received at deserializing")
-                return null
-            }
-            println("Deserializing...")
-            objectMapper.readValue(String(data, charset("UTF-8")), Array<TopicKeys>::class.java)
-        } catch (e: Exception) {
-            throw SerializationException("Error when deserializing byte[] to TopicKeys[]")
-        }
-    }
 
-}
-
-class TopicKeysArraySerializerTentative : Serializer<Array<TopicKeys>> {
-    private val objectMapper = ObjectMapper()
-    override fun serialize(topic: String?, data: Array<TopicKeys>?): ByteArray? {
-        return try {
-            if (data == null) {
-                println("Null received at serializing")
-                return null
-            }
-            println("Serializing...")
-            objectMapper.writeValueAsBytes(data)
-        } catch (e: java.lang.Exception) {
-            throw SerializationException("Error when serializing MessageDto to byte[]")
-        }
-    }
-}
 
 class TopicKeysArrayDeserializer: Deserializer<Array<TopicKeys>> {
     override fun deserialize(topic: String?, data: ByteArray?): Array<TopicKeys>? {
