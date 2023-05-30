@@ -1,7 +1,6 @@
 package com.isel.ps.gateway.websocket
 
 import com.isel.ps.gateway.auth.RestAuthenticationProvider
-import com.isel.ps.gateway.model.USER_ID
 import org.springframework.http.HttpStatusCode
 import org.springframework.http.server.ServerHttpRequest
 import org.springframework.http.server.ServerHttpResponse
@@ -11,6 +10,11 @@ import org.springframework.web.util.UriComponentsBuilder
 
 
 class AuthenticationInterceptor : HandshakeInterceptor {
+
+    companion object {
+        const val USER_ID: String = "user_id"
+    }
+
     override fun beforeHandshake(
         request: ServerHttpRequest,
         response: ServerHttpResponse,
@@ -30,7 +34,8 @@ class AuthenticationInterceptor : HandshakeInterceptor {
 
         println("token: $authorizationToken")
 
-        val authenticationProvider = RestAuthenticationProvider("http://mockbin.org/bin/1df228cc-b7cb-4dda-aeba-2c21e1070c02?foo=bar&foo=baz")
+        val authenticationProvider =
+            RestAuthenticationProvider("http://mockbin.org/bin/1df228cc-b7cb-4dda-aeba-2c21e1070c02?foo=bar&foo=baz")
         val userId = authenticationProvider.validateToken(authorizationToken)
 
         if (userId == null) {

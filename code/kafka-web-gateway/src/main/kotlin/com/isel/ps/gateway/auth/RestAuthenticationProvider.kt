@@ -1,29 +1,29 @@
 package com.isel.ps.gateway.auth
 
-import com.isel.ps.gateway.model.Authentication
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.RestTemplate
 
 class RestAuthenticationProvider(private val authUrl: String, private val restTemplate: RestTemplate = RestTemplate()) :
     AuthenticationProvider {
-
-    override fun authenticate(authentication: Authentication): String? {
-        // TODO:
-        return null
-    }
-
     override fun validateToken(token: String): String? {
         val headers = HttpHeaders()
-        headers.setBearerAuth(token);
+        headers.setBearerAuth(token)
 
         val response = restTemplate.getForEntity(authUrl, Void::class.java)
 
         return if (response.statusCode === HttpStatus.OK) {
-            response.headers["User"]?.first()
+            extractUserFromRequestBody(response.body as String)
         } else {
             return null
         }
+    }
+
+    private fun extractUserFromRequestBody(requestBody: String): String {
+        val objectMapper = ObjectMapper()
+        val jsonNode = objectMapper.readTree(requestBody) // Parse request body JSON
+        return jsonNode["user"].asText() // Extract "user" parameter as string
     }
 }
 

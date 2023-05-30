@@ -1,0 +1,15 @@
+DELETE FROM client_role_permission;
+DELETE FROM client_permission;
+DELETE FROM client_role_assignment;
+DELETE FROM client_role;
+DELETE FROM subscription;
+DELETE FROM active_session;
+DELETE FROM session;
+DELETE FROM gateway;
+DELETE FROM admin_token;
+DELETE FROM setting;
+DELETE FROM admin_role_assignment;
+DELETE FROM admin_permission;
+DELETE FROM admin_role;
+DELETE FROM admin;
+DELETE FROM client;

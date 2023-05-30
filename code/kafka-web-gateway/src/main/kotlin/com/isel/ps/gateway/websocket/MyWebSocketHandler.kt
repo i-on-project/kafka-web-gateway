@@ -3,10 +3,20 @@ package com.isel.ps.gateway.websocket
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.module.kotlin.readValue
-import com.isel.ps.gateway.model.CommandDeserializer
-import com.isel.ps.gateway.model.GatewayTypes.*
-import com.isel.ps.gateway.model.TopicTypeDeserializer
-import com.isel.ps.gateway.model.USER_ID
+import com.isel.ps.gateway.model.GatewayCommands.Companion.Ack
+import com.isel.ps.gateway.model.GatewayCommands.Companion.ClientMessage
+import com.isel.ps.gateway.model.GatewayCommands.Companion.Command
+import com.isel.ps.gateway.model.GatewayCommands.Companion.CommandDeserializer
+import com.isel.ps.gateway.model.GatewayCommands.Companion.Consume
+import com.isel.ps.gateway.model.GatewayCommands.Companion.Err
+import com.isel.ps.gateway.model.GatewayCommands.Companion.Pause
+import com.isel.ps.gateway.model.GatewayCommands.Companion.Publish
+import com.isel.ps.gateway.model.GatewayCommands.Companion.Resume
+import com.isel.ps.gateway.model.GatewayCommands.Companion.Subscribe
+import com.isel.ps.gateway.model.GatewayCommands.Companion.TopicType
+import com.isel.ps.gateway.model.GatewayCommands.Companion.TopicTypeDeserializer
+import com.isel.ps.gateway.utils.SendTask
+import com.isel.ps.gateway.websocket.AuthenticationInterceptor.Companion.USER_ID
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -27,9 +37,9 @@ class MyWebSocketHandler(
     private val bootstrapServers: String
 ) : WebSocketHandler {
 
-    private val LOGGER: Logger = LoggerFactory.getLogger(MyWebSocketHandler::class.java)
-    var executor: Timer = Timer()
-    val subscriptions: MutableMap<String, List<TopicType>> = mutableMapOf()
+    private val logger: Logger = LoggerFactory.getLogger(MyWebSocketHandler::class.java)
+    private var executor: Timer = Timer()
+    // val subscriptions: MutableMap<String, List<TopicType>> = mutableMapOf()
 
     private val objectMapper = ObjectMapper().also {
         val module = SimpleModule()
@@ -94,13 +104,13 @@ class MyWebSocketHandler(
 
                 if (userMessageStatuses != null) {
                     userMessageStatuses[clientMessage.messageID] = true
-                    LOGGER.info("[${clientMessage.messageID}] message acked")
+                    logger.info("[${clientMessage.messageID}] message acked")
                 }
             }
 
             else -> {
                 // Handle unknown command type
-                LOGGER.info("Received unknown command, {}", clientMessage)
+                logger.info("Received unknown command, {}", clientMessage)
             }
         }
 
@@ -108,7 +118,7 @@ class MyWebSocketHandler(
     }
 
     override fun afterConnectionEstablished(session: WebSocketSession) {
-        LOGGER.info("New connection from {}.", getUserIdFromSession(session))
+        logger.info("New connection from {}.", getUserIdFromSession(session))
     }
 
     override fun afterConnectionClosed(session: WebSocketSession, closeStatus: CloseStatus) {
@@ -116,7 +126,7 @@ class MyWebSocketHandler(
 
         // Remove the message statuses for the specific user
         messageStatuses.remove(userId)
-        LOGGER.info("Closed connection from {}.", userId)
+        logger.info("Closed connection from {}.", userId)
     }
 
     override fun supportsPartialMessages(): Boolean {
@@ -148,7 +158,7 @@ class MyWebSocketHandler(
 
         var remainingRetries = retries
 
-        LOGGER.info("userId: $userId")
+        logger.info("userId: $userId")
         val sendTask = SendTask(
             messageStatuses,
             userId,
@@ -157,7 +167,7 @@ class MyWebSocketHandler(
             session,
             textMessage,
             executor,
-            LOGGER
+            logger
         )
 
         executor.schedule(sendTask, 10000L)
@@ -175,46 +185,5 @@ class MyWebSocketHandler(
             this.schedule(task, delay)
         }
         return task
-    }
-}
-
-class SendTask(
-    private val messageStatuses: Map<String, Map<String, Boolean>>,
-    private val userId: String,
-    private val messageId: String,
-    private val remainingRetries: Int,
-    private val session: WebSocketSession,
-    private val textMessage: WebSocketMessage<*>,
-    private val executor: Timer,
-    private val logger: Logger
-) : TimerTask() {
-    override fun run() {
-        if (messageStatuses[userId]?.get(messageId) != true && remainingRetries > 0) {
-            session.sendMessage(textMessage)
-            rescheduleTask(remainingRetries - 1)
-        } else {
-            // Handle when the message was acknowledged or retries are exhausted
-            if (remainingRetries == 0) {
-                // Retry limit reached
-                logger.info("Message retries exhausted")
-            } else {
-                // Message acknowledged
-                logger.info("Message acknowledged")
-            }
-        }
-    }
-
-    private fun rescheduleTask(retries: Int) {
-        val newTask = SendTask(
-            messageStatuses,
-            userId,
-            messageId,
-            retries,
-            session,
-            textMessage,
-            executor,
-            logger
-        )
-        executor.schedule(newTask, 10000L)
     }
 }
