@@ -58,7 +58,7 @@ create table if not exists client_permission
     key           varchar(255),
     read          boolean      NOT NULL,
     write         boolean      NOT NULL,
-    unique (permission_id, topic, key)
+    unique (topic, key, read, write)
 );
 
 create table if not exists client_role_permission
@@ -68,14 +68,18 @@ create table if not exists client_role_permission
     primary key (role_id, permission_id)
 );
 
+create table if not exists client_permission_assignment
+(
+    client_id     bigint references client (client_id) on delete cascade on update cascade,
+    permission_id int references client_permission (permission_id) on delete cascade on update cascade,
+    primary key (client_id, permission_id)
+);
+
 create table if not exists admin
 (
-    admin_id            int generated always as identity primary key,
-    username            varchar(36) unique,
-    password_validation varchar(255) not null,
-    description         varchar(255),
-    owner               boolean      not null,
-    constraint username_check check (char_length(username) >= 4 and char_length(username) <= 36)
+    admin_id    int generated always as identity primary key,
+    description varchar(255),
+    owner       boolean not null
 );
 
 create table if not exists admin_role
@@ -97,7 +101,7 @@ create table if not exists admin_permission
     permission_id     int generated always as identity primary key,
     administrative    boolean not null,
     client_permission boolean not null,
-    unique (permission_id, administrative, client_permission)
+    unique (administrative, client_permission)
 );
 
 create table if not exists admin_role_permission
@@ -119,6 +123,6 @@ create table if not exists setting
 (
     setting_name        varchar(64) primary key,
     setting_value       varchar(255) not null,
-    setting_description varchar(255) not null,
+    setting_description varchar(255),
     updated_at          timestamp    not null
 );

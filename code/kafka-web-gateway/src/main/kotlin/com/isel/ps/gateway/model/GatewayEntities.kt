@@ -62,7 +62,7 @@ class GatewayEntities {
 
         data class Admin(
             val adminId: Int?,
-            val username: String?,
+            val username: String,
             var passwordValidation: String,
             val description: String?,
             val owner: Boolean
@@ -100,8 +100,12 @@ class GatewayEntities {
         data class Setting(
             val settingName: String,
             var settingValue: String,
-            val settingDescription: String,
+            val settingDescription: String?,
             val updatedAt: Timestamp
         )
+
+        enum class SettingType(val settingName: String) {
+            AuthServer("auth-server")
+        }
     }
 }

@@ -2,21 +2,28 @@ package com.isel.ps.gateway.db
 
 import com.isel.ps.gateway.model.GatewayEntities.Companion.Admin
 import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.jdbc.support.GeneratedKeyHolder
+import org.springframework.jdbc.support.KeyHolder
 import org.springframework.stereotype.Repository
 
 @Repository
 class AdminRepository(private val jdbcTemplate: JdbcTemplate) {
-    fun create(admin: Admin) {
-        val sql =
-            "INSERT INTO admin (username, password_validation, description, owner) VALUES (?, ?, ?, ?)"
-        jdbcTemplate.update(
-            sql,
-            admin.adminId,
-            admin.username,
-            admin.passwordValidation,
-            admin.description,
-            admin.owner
-        )
+    fun create(admin: Admin): Admin {
+        val sql = "INSERT INTO admin (username, password_validation, description, owner) VALUES (?, ?, ?, ?)"
+
+        val keyHolder: KeyHolder = GeneratedKeyHolder()
+        jdbcTemplate.update({ connection ->
+            val preparedStatement = connection.prepareStatement(sql, arrayOf("admin_id"))
+            preparedStatement.setString(1, admin.username)
+            preparedStatement.setString(2, admin.passwordValidation)
+            preparedStatement.setString(3, admin.description)
+            preparedStatement.setBoolean(4, admin.owner)
+            preparedStatement
+        }, keyHolder)
+
+        val generatedId = keyHolder.key?.toInt() ?: throw IllegalStateException("Failed to retrieve generated ID")
+
+        return admin.copy(adminId = generatedId)
     }
 
     fun getById(adminId: Int): Admin? {
