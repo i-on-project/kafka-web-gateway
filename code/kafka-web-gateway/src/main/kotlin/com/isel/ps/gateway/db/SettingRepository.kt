@@ -1,6 +1,6 @@
 package com.isel.ps.gateway.db
 
-import com.isel.ps.gateway.model.GatewayEntities.Companion.Setting
+import com.isel.ps.gateway.model.Setting
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Repository
 
@@ -8,36 +8,36 @@ import org.springframework.stereotype.Repository
 class SettingRepository(private val jdbcTemplate: JdbcTemplate) {
     fun create(setting: Setting) {
         val sql =
-            "INSERT INTO setting (setting_name, setting_value, setting_description, updated_at) VALUES (?, ?, ?, ?)"
+            "INSERT INTO setting (name, value, description, updated_at) VALUES (?, ?, ?, ?)"
         jdbcTemplate.update(
             sql,
-            setting.settingName,
-            setting.settingValue,
-            setting.settingDescription,
+            setting.name,
+            setting.value,
+            setting.description,
             setting.updatedAt
         )
     }
 
     fun getBySettingName(settingName: String): Setting? {
-        val sql = "SELECT * FROM setting WHERE setting_name = ?"
+        val sql = "SELECT * FROM setting WHERE name = ?"
         return jdbcTemplate.queryForObject(sql) { rs, _ ->
             Setting(
-                settingName = rs.getString("setting_name"),
-                settingValue = rs.getString("setting_value"),
-                settingDescription = rs.getString("setting_description"),
+                name = rs.getString("name"),
+                value = rs.getString("value"),
+                description = rs.getString("description"),
                 updatedAt = rs.getTimestamp("updated_at")
             )
         }
     }
 
     fun update(setting: Setting) {
-        val sql = "UPDATE setting SET setting_value = ?, setting_description = ?, updated_at = ? WHERE setting_name = ?"
+        val sql = "UPDATE setting SET value = ?, description = ?, updated_at = ? WHERE name = ?"
         jdbcTemplate.update(
             sql,
-            setting.settingValue,
-            setting.settingDescription,
+            setting.value,
+            setting.description,
             setting.updatedAt,
-            setting.settingName
+            setting.name
         )
     }
 
@@ -50,9 +50,9 @@ class SettingRepository(private val jdbcTemplate: JdbcTemplate) {
         val sql = "SELECT * FROM setting"
         return jdbcTemplate.query(sql) { rs, _ ->
             Setting(
-                settingName = rs.getString("setting_name"),
-                settingValue = rs.getString("setting_value"),
-                settingDescription = rs.getString("setting_description"),
+                name = rs.getString("name"),
+                value = rs.getString("value"),
+                description = rs.getString("description"),
                 updatedAt = rs.getTimestamp("updated_at")
             )
         }

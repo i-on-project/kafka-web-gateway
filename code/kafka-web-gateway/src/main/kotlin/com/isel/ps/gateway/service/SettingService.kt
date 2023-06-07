@@ -1,24 +1,24 @@
 package com.isel.ps.gateway.service
 
 import com.isel.ps.gateway.db.SettingRepository
-import com.isel.ps.gateway.model.GatewayEntities.Companion.Setting
-import com.isel.ps.gateway.model.GatewayEntities.Companion.SettingType
+import com.isel.ps.gateway.model.Setting
+import com.isel.ps.gateway.model.SettingType
 import org.springframework.stereotype.Service
 import java.sql.Timestamp
 import java.time.Instant
 
 @Service
 class SettingService(private val settingRepository: SettingRepository) {
-    fun createSetting(settingName: String, settingValue: String, settingDescription: String?): Setting {
+    fun createSetting(name: String, value: String, description: String?): Setting {
 
-        if (!checkEnumSettingNameExists(settingName)) {
-            throw Exception("Setting name($settingName) not supported.")
+        if (!checkEnumSettingNameExists(name)) {
+            throw Exception("Setting name($name) not supported.")
         }
 
         val setting = Setting(
-            settingName,
-            settingValue,
-            settingDescription,
+            name,
+            value,
+            description,
             Timestamp.from(Instant.now())
         )
 

@@ -1,6 +1,6 @@
 package com.isel.ps.gateway.db
 
-import com.isel.ps.gateway.model.GatewayEntities.Companion.AdminToken
+import com.isel.ps.gateway.model.AdminToken
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Repository
 

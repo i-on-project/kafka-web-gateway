@@ -1,6 +1,6 @@
 package com.isel.ps.gateway.db
 
-import com.isel.ps.gateway.model.GatewayEntities.Companion.ClientPermission
+import com.isel.ps.gateway.model.Permission
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.core.PreparedStatementCreator
 import org.springframework.jdbc.support.GeneratedKeyHolder
@@ -9,19 +9,19 @@ import java.sql.PreparedStatement
 import java.sql.Statement
 
 @Repository
-class ClientPermissionRepository(private val jdbcTemplate: JdbcTemplate) {
-    fun create(clientPermission: ClientPermission): Int {
-        val sql = "INSERT INTO client_permission (topic, key, read, write) VALUES (?, ?, ?, ?)"
+class PermissionRepository(private val jdbcTemplate: JdbcTemplate) {
+    fun create(permission: Permission): Int {
+        val sql = "INSERT INTO permission (topic, key, read, write) VALUES (?, ?, ?, ?)"
 
         val keyHolder = GeneratedKeyHolder()
 
         val preparedStatementCreator = PreparedStatementCreator { connection ->
             val preparedStatement: PreparedStatement =
                 connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)
-            preparedStatement.setString(1, clientPermission.topic)
-            preparedStatement.setString(2, clientPermission.key)
-            preparedStatement.setBoolean(3, clientPermission.read)
-            preparedStatement.setBoolean(4, clientPermission.write)
+            preparedStatement.setString(1, permission.topic)
+            preparedStatement.setString(2, permission.key)
+            preparedStatement.setBoolean(3, permission.read)
+            preparedStatement.setBoolean(4, permission.write)
 
             preparedStatement
         }
@@ -31,10 +31,10 @@ class ClientPermissionRepository(private val jdbcTemplate: JdbcTemplate) {
         return keyHolder.key?.toInt() ?: throw IllegalStateException("Failed to retrieve generated ID")
     }
 
-    fun getById(permissionId: Int): ClientPermission? {
+    fun getById(permissionId: Int): Permission? {
         val sql = "SELECT * FROM client_permission WHERE permission_id = ?"
         return jdbcTemplate.queryForObject(sql) { rs, _ ->
-            ClientPermission(
+            Permission(
                 permissionId = rs.getInt("permission_id"),
                 topic = rs.getString("topic"),
                 key = rs.getString("key"),
@@ -49,10 +49,10 @@ class ClientPermissionRepository(private val jdbcTemplate: JdbcTemplate) {
         jdbcTemplate.update(sql, permissionId)
     }
 
-    fun getAll(): List<ClientPermission> {
+    fun getAll(): List<Permission> {
         val sql = "SELECT * FROM client_permission"
         return jdbcTemplate.query(sql) { rs, _ ->
-            ClientPermission(
+            Permission(
                 permissionId = rs.getInt("permission_id"),
                 topic = rs.getString("topic"),
                 key = rs.getString("key"),

@@ -1,7 +1,7 @@
 package com.isel.ps.gateway.service
 
 import com.isel.ps.gateway.db.GatewayRepository
-import com.isel.ps.gateway.model.GatewayEntities.Companion.Gateway
+import com.isel.ps.gateway.model.Gateway
 import org.springframework.stereotype.Service
 import java.sql.Timestamp
 import java.time.Instant

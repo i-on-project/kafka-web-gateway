@@ -1,5 +1,6 @@
 package com.isel.ps.gateway.config
 
+import com.isel.ps.gateway.service.GatewayService
 import org.springframework.beans.factory.DisposableBean
 import org.springframework.stereotype.Component
 

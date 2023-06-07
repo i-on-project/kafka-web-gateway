@@ -1,14 +1,23 @@
 package com.isel.ps.gateway.db
 
-import com.isel.ps.gateway.model.GatewayEntities.Companion.Session
+import com.isel.ps.gateway.model.Session
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Repository
 
 @Repository
 class SessionRepository(private val jdbcTemplate: JdbcTemplate) {
     fun create(session: Session) {
-        val sql = "INSERT INTO session (session_id, client_id, gateway_id, created_at) VALUES (?, ?, ?, ?)"
-        jdbcTemplate.update(sql, session.sessionId, session.clientId, session.gatewayId, session.createdAt)
+        val sql =
+            "INSERT INTO session (session_id, client_id, gateway_id, created_at, updated_at, active) VALUES (?, ?, ?, ?, ?, ?)"
+        jdbcTemplate.update(
+            sql,
+            session.sessionId,
+            session.clientId,
+            session.gatewayId,
+            session.createdAt,
+            session.updatedAt,
+            session.active
+        )
     }
 
     fun getById(sessionId: Long): Session? {
@@ -18,7 +27,9 @@ class SessionRepository(private val jdbcTemplate: JdbcTemplate) {
                 sessionId = rs.getLong("session_id"),
                 clientId = rs.getLong("client_id"),
                 gatewayId = rs.getLong("gateway_id"),
-                createdAt = rs.getTimestamp("created_at")
+                createdAt = rs.getTimestamp("created_at"),
+                updatedAt = rs.getTimestamp("updated_at"),
+                active = rs.getBoolean("active")
             )
         }
     }
@@ -35,7 +46,9 @@ class SessionRepository(private val jdbcTemplate: JdbcTemplate) {
                 sessionId = rs.getLong("session_id"),
                 clientId = rs.getLong("client_id"),
                 gatewayId = rs.getLong("gateway_id"),
-                createdAt = rs.getTimestamp("created_at")
+                createdAt = rs.getTimestamp("created_at"),
+                updatedAt = rs.getTimestamp("updated_at"),
+                active = rs.getBoolean("active")
             )
         }
     }

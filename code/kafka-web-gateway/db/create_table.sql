@@ -1,8 +1,6 @@
-create table if not exists client -- user is a reserved keyword
+create table if not exists client
 (
-    client_id bigint primary key,
-    username  varchar(255),
-    constraint username_check check (char_length(username) >= 4 and char_length(username) <= 36)
+    client_id bigint primary key
 );
 
 create table if not exists gateway
@@ -19,13 +17,9 @@ create table if not exists session
     session_id bigint primary key,
     client_id  bigint references client (client_id) on delete cascade on update cascade,
     gateway_id bigint references gateway (gateway_id) on delete cascade on update cascade,
-    created_at timestamp default now()
-);
-
-create table if not exists active_session
-(
-    session_id bigint primary key references session (session_id) on delete cascade on update cascade,
-    updated_at timestamp not null
+    created_at timestamp default now(),
+    updated_at timestamp not null,
+    active     boolean   not null
 );
 
 create table if not exists subscription
@@ -37,21 +31,21 @@ create table if not exists subscription
     unique (session_id, topic, key)
 );
 
-create table if not exists client_role
+create table if not exists role
 (
     role_id     int generated always as identity primary key,
-    role        varchar(36) unique not null,
+    name        varchar(36) unique not null,
     description varchar(255)
 );
 
-create table if not exists client_role_assignment
+create table if not exists client_role
 (
     client_id bigint references client (client_id) on delete cascade on update cascade,
-    role_id   int references client_role (role_id) on delete cascade on update cascade,
+    role_id   int references role (role_id) on delete cascade on update cascade,
     primary key (client_id, role_id)
 );
 
-create table if not exists client_permission
+create table if not exists permission
 (
     permission_id int generated always as identity primary key,
     topic         varchar(255) not null,
@@ -61,54 +55,28 @@ create table if not exists client_permission
     unique (topic, key, read, write)
 );
 
-create table if not exists client_role_permission
+create table if not exists role_permission
 (
-    role_id       int references client_role (role_id) on delete cascade on update cascade,
-    permission_id int references client_permission (permission_id) on delete cascade on update cascade,
+    role_id       int references role (role_id) on delete cascade on update cascade,
+    permission_id int references permission (permission_id) on delete cascade on update cascade,
     primary key (role_id, permission_id)
 );
 
-create table if not exists client_permission_assignment
+create table if not exists client_permission
 (
     client_id     bigint references client (client_id) on delete cascade on update cascade,
-    permission_id int references client_permission (permission_id) on delete cascade on update cascade,
+    permission_id int references permission (permission_id) on delete cascade on update cascade,
     primary key (client_id, permission_id)
 );
 
 create table if not exists admin
 (
-    admin_id    int generated always as identity primary key,
-    description varchar(255),
-    owner       boolean not null
-);
-
-create table if not exists admin_role
-(
-    role_id     int generated always as identity primary key,
-    role        varchar(36) unique not null,
-    description varchar(255)
-);
-
-create table if not exists admin_role_assignment
-(
-    admin_id int references admin (admin_id) on delete cascade on update cascade,
-    role_id  int references admin_role (role_id) on delete cascade on update cascade,
-    primary key (admin_id, role_id)
-);
-
-create table if not exists admin_permission
-(
-    permission_id     int generated always as identity primary key,
-    administrative    boolean not null,
-    client_permission boolean not null,
-    unique (administrative, client_permission)
-);
-
-create table if not exists admin_role_permission
-(
-    role_id       int references admin_role (role_id) on delete cascade on update cascade,
-    permission_id int references admin_permission (permission_id) on delete cascade on update cascade,
-    primary key (role_id, permission_id)
+    admin_id       int generated always as identity primary key,
+    name           varchar(64) not null,
+    description    varchar(255),
+    owner          boolean     not null,
+    administrative boolean     not null,
+    permission     boolean     not null
 );
 
 create table if not exists admin_token
@@ -121,8 +89,8 @@ create table if not exists admin_token
 
 create table if not exists setting
 (
-    setting_name        varchar(64) primary key,
-    setting_value       varchar(255) not null,
-    setting_description varchar(255),
-    updated_at          timestamp    not null
+    name        varchar(64) primary key,
+    value       varchar(255) not null,
+    description varchar(255),
+    updated_at  timestamp    not null
 );

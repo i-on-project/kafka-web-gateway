@@ -1,8 +1,8 @@
 package com.isel.ps.gateway.config
 
 import com.isel.ps.gateway.db.AdminRepository
-import com.isel.ps.gateway.model.GatewayEntities.Companion.Admin
-import com.isel.ps.gateway.model.GatewayEntities.Companion.SettingType
+import com.isel.ps.gateway.model.Admin
+import com.isel.ps.gateway.model.SettingType
 import com.isel.ps.gateway.service.GatewayService
 import com.isel.ps.gateway.service.SettingService
 import org.springframework.beans.factory.annotation.Value
@@ -17,7 +17,7 @@ class StartupConfig(
     private val settingService: SettingService
 ) {
     @Value("\${gateway.config.admin.username}")
-    private lateinit var adminUsername: String
+    private lateinit var adminName: String
 
     @Value("\${gateway.config.admin.password}")
     private lateinit var adminPassword: String
@@ -40,14 +40,15 @@ class StartupConfig(
     }
 
     private fun attemptToCreateAdmin() {
-        val existingAdmin = adminRepository.getByUsername(adminUsername)
+        val existingAdmin = adminRepository.getByName(adminName)
         if (existingAdmin == null) {
             val newAdmin = Admin(
-                username = adminUsername,
-                passwordValidation = adminPassword,
+                name = adminName,
                 description = adminDescription,
                 owner = true,
-                adminId = null
+                adminId = null,
+                permission = true,
+                administrative = true
             )
             adminRepository.create(newAdmin)
         }

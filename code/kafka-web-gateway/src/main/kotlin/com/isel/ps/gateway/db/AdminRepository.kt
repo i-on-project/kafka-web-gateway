@@ -1,6 +1,6 @@
 package com.isel.ps.gateway.db
 
-import com.isel.ps.gateway.model.GatewayEntities.Companion.Admin
+import com.isel.ps.gateway.model.Admin
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.support.GeneratedKeyHolder
 import org.springframework.jdbc.support.KeyHolder
@@ -9,15 +9,16 @@ import org.springframework.stereotype.Repository
 @Repository
 class AdminRepository(private val jdbcTemplate: JdbcTemplate) {
     fun create(admin: Admin): Admin {
-        val sql = "INSERT INTO admin (username, password_validation, description, owner) VALUES (?, ?, ?, ?)"
+        val sql = "INSERT INTO admin (name, description, owner, administrative, permission) VALUES (?, ?, ?, ?, ?)"
 
         val keyHolder: KeyHolder = GeneratedKeyHolder()
         jdbcTemplate.update({ connection ->
             val preparedStatement = connection.prepareStatement(sql, arrayOf("admin_id"))
-            preparedStatement.setString(1, admin.username)
-            preparedStatement.setString(2, admin.passwordValidation)
-            preparedStatement.setString(3, admin.description)
-            preparedStatement.setBoolean(4, admin.owner)
+            preparedStatement.setString(1, admin.name)
+            preparedStatement.setString(2, admin.description)
+            preparedStatement.setBoolean(3, admin.owner)
+            preparedStatement.setBoolean(4, admin.administrative)
+            preparedStatement.setBoolean(5, admin.permission)
             preparedStatement
         }, keyHolder)
 
@@ -31,34 +32,39 @@ class AdminRepository(private val jdbcTemplate: JdbcTemplate) {
         return jdbcTemplate.queryForObject(sql) { rs, _ ->
             Admin(
                 adminId = rs.getInt("admin_id"),
-                username = rs.getString("username"),
-                passwordValidation = rs.getString("password_validation"),
+                name = rs.getString("name"),
                 description = rs.getString("description"),
-                owner = rs.getBoolean("owner")
+                owner = rs.getBoolean("owner"),
+                administrative = rs.getBoolean("administrative"),
+                permission = rs.getBoolean("permission")
             )
         }
     }
 
-    fun getByUsername(username: String): Admin? {
-        val sql = "SELECT * FROM admin WHERE username = ?"
+    fun getByName(name: String): Admin? {
+        val sql = "SELECT * FROM admin WHERE name = ?"
         return jdbcTemplate.queryForObject(sql) { rs, _ ->
             Admin(
                 adminId = rs.getInt("admin_id"),
-                username = rs.getString("username"),
-                passwordValidation = rs.getString("password_validation"),
+                name = rs.getString("name"),
                 description = rs.getString("description"),
-                owner = rs.getBoolean("owner")
+                owner = rs.getBoolean("owner"),
+                administrative = rs.getBoolean("administrative"),
+                permission = rs.getBoolean("permission")
             )
         }
     }
 
     fun update(admin: Admin) {
-        val sql = "UPDATE admin SET password_validation = ?, description = ?, owner = ? WHERE admin_id = ?"
+        val sql =
+            "UPDATE admin SET name = ?, description = ?, owner = ?, permission = ?, administrative = ? WHERE admin_id = ?"
         jdbcTemplate.update(
             sql,
-            admin.passwordValidation,
+            admin.name,
             admin.description,
             admin.owner,
+            admin.permission,
+            admin.administrative,
             admin.adminId
         )
     }
@@ -73,10 +79,11 @@ class AdminRepository(private val jdbcTemplate: JdbcTemplate) {
         return jdbcTemplate.query(sql) { rs, _ ->
             Admin(
                 adminId = rs.getInt("admin_id"),
-                username = rs.getString("username"),
-                passwordValidation = rs.getString("password_validation"),
+                name = rs.getString("name"),
                 description = rs.getString("description"),
-                owner = rs.getBoolean("owner")
+                owner = rs.getBoolean("owner"),
+                administrative = rs.getBoolean("administrative"),
+                permission = rs.getBoolean("permission")
             )
         }
     }
