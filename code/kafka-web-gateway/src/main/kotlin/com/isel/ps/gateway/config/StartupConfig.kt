@@ -13,7 +13,6 @@ import org.springframework.stereotype.Component
 
 @Component
 class StartupConfig(
-    private val gatewayService: GatewayService,
     private val adminService: AdminService,
     private val settingService: SettingService
 ) {
@@ -34,15 +33,8 @@ class StartupConfig(
     @EventListener(ApplicationReadyEvent::class)
     fun initialize() {
         logger.info("Gateway start received")
-        createGateway()
         attemptToCreateAdminAndToken()
         attemptToCreateSetting()
-    }
-
-    private fun createGateway() {
-        val gateway = gatewayService.createGateway()
-        GatewayConfig.GATEWAY = gateway
-        logger.info("Gateway with topics \"${gateway.topicClients}\" and \"${gateway.topicCommands}\" created.")
     }
 
     private fun attemptToCreateAdminAndToken() {

@@ -1,22 +1,19 @@
 package com.isel.ps.gateway
 
+import com.isel.ps.gateway.config.GatewayConfig
 import com.isel.ps.gateway.config.ShutdownConfig
 import com.isel.ps.gateway.service.GatewayService
 import com.isel.ps.gateway.utils.Sha256TokenEncoder
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 
 @SpringBootApplication
-class GatewayApplication(val gatewayService: GatewayService) {
+class GatewayApplication(val gatewayService: GatewayService, val gatewayConfig: GatewayConfig) {
     @Bean
     fun shutdownHandler(): ShutdownConfig {
-        return ShutdownConfig(gatewayService)
+        return ShutdownConfig(gatewayConfig, gatewayService)
     }
-
-    @Bean
-    fun passwordEncoder() = BCryptPasswordEncoder()
 
     @Bean
     fun tokenEncoder() = Sha256TokenEncoder()
