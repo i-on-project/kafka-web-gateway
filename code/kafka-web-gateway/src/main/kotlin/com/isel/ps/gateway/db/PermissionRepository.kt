@@ -1,8 +1,10 @@
 package com.isel.ps.gateway.db
 
 import com.isel.ps.gateway.model.Permission
+import org.springframework.dao.IncorrectResultSizeDataAccessException
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.core.PreparedStatementCreator
+import org.springframework.jdbc.core.queryForObject
 import org.springframework.jdbc.support.GeneratedKeyHolder
 import org.springframework.stereotype.Repository
 import java.sql.PreparedStatement
@@ -33,14 +35,18 @@ class PermissionRepository(private val jdbcTemplate: JdbcTemplate) {
 
     fun getById(permissionId: Int): Permission? {
         val sql = "SELECT * FROM client_permission WHERE permission_id = ?"
-        return jdbcTemplate.queryForObject(sql) { rs, _ ->
-            Permission(
-                permissionId = rs.getInt("permission_id"),
-                topic = rs.getString("topic"),
-                key = rs.getString("key"),
-                read = rs.getBoolean("read"),
-                write = rs.getBoolean("write")
-            )
+        return try {
+            jdbcTemplate.queryForObject(sql, permissionId) { rs, _ ->
+                Permission(
+                    permissionId = rs.getInt("permission_id"),
+                    topic = rs.getString("topic"),
+                    key = rs.getString("key"),
+                    read = rs.getBoolean("read"),
+                    write = rs.getBoolean("write")
+                )
+            }
+        } catch (_: IncorrectResultSizeDataAccessException) {
+            return null
         }
     }
 

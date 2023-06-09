@@ -1,7 +1,9 @@
 package com.isel.ps.gateway.db
 
 import com.isel.ps.gateway.model.Session
+import org.springframework.dao.IncorrectResultSizeDataAccessException
 import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.jdbc.core.queryForObject
 import org.springframework.stereotype.Repository
 
 @Repository
@@ -22,15 +24,19 @@ class SessionRepository(private val jdbcTemplate: JdbcTemplate) {
 
     fun getById(sessionId: Long): Session? {
         val sql = "SELECT * FROM session WHERE session_id = ?"
-        return jdbcTemplate.queryForObject(sql) { rs, _ ->
-            Session(
-                sessionId = rs.getLong("session_id"),
-                clientId = rs.getLong("client_id"),
-                gatewayId = rs.getLong("gateway_id"),
-                createdAt = rs.getTimestamp("created_at"),
-                updatedAt = rs.getTimestamp("updated_at"),
-                active = rs.getBoolean("active")
-            )
+        return try {
+            jdbcTemplate.queryForObject(sql, sessionId) { rs, _ ->
+                Session(
+                    sessionId = rs.getLong("session_id"),
+                    clientId = rs.getLong("client_id"),
+                    gatewayId = rs.getLong("gateway_id"),
+                    createdAt = rs.getTimestamp("created_at"),
+                    updatedAt = rs.getTimestamp("updated_at"),
+                    active = rs.getBoolean("active")
+                )
+            }
+        } catch (_: IncorrectResultSizeDataAccessException) {
+            return null
         }
     }
 

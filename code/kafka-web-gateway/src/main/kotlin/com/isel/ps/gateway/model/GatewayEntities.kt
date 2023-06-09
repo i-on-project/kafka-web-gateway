@@ -66,7 +66,7 @@ data class Admin(
 data class AdminToken(
     val tokenValidation: String,
     val adminId: Int,
-    val createdAt: Timestamp,
+    val createdAt: Timestamp?,
     val lastUsedAt: Timestamp
 )
 

@@ -5,7 +5,7 @@ import java.util.*
 
 class Sha256TokenEncoder : TokenEncoder {
 
-    override fun createValidationInformation(token: String): String = hash(token)
+    override fun createTokenValidation(token: String): String = hash(token)
 
     override fun validate(validationInfo: String, token: String): Boolean =
         validationInfo == hash(token)

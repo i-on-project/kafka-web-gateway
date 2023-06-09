@@ -3,9 +3,15 @@ package com.isel.ps.gateway.kafka
 import org.apache.kafka.clients.admin.*
 import org.apache.kafka.common.errors.TopicExistsException
 import org.apache.kafka.common.errors.UnknownTopicOrPartitionException
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.annotation.Configuration
 import java.util.concurrent.ExecutionException
 
-class KafkaAdminUtil(bootstrapServers: String) {
+@Configuration
+class KafkaAdminUtil(
+    @Value("\${spring.kafka.bootstrap-servers}")
+    private val bootstrapServers: String
+) {
     private val adminClient: Admin
 
     init {

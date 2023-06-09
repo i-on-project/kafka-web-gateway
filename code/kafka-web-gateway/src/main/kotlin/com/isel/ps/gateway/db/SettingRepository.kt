@@ -1,7 +1,9 @@
 package com.isel.ps.gateway.db
 
 import com.isel.ps.gateway.model.Setting
+import org.springframework.dao.IncorrectResultSizeDataAccessException
 import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.jdbc.core.queryForObject
 import org.springframework.stereotype.Repository
 
 @Repository
@@ -20,13 +22,17 @@ class SettingRepository(private val jdbcTemplate: JdbcTemplate) {
 
     fun getBySettingName(settingName: String): Setting? {
         val sql = "SELECT * FROM setting WHERE name = ?"
-        return jdbcTemplate.queryForObject(sql) { rs, _ ->
-            Setting(
-                name = rs.getString("name"),
-                value = rs.getString("value"),
-                description = rs.getString("description"),
-                updatedAt = rs.getTimestamp("updated_at")
-            )
+        return try {
+            jdbcTemplate.queryForObject(sql, settingName) { rs, _ ->
+                Setting(
+                    name = rs.getString("name"),
+                    value = rs.getString("value"),
+                    description = rs.getString("description"),
+                    updatedAt = rs.getTimestamp("updated_at")
+                )
+            }
+        } catch (err: IncorrectResultSizeDataAccessException) {
+            return null
         }
     }
 

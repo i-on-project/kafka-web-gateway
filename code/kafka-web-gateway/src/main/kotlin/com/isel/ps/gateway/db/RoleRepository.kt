@@ -1,7 +1,9 @@
 package com.isel.ps.gateway.db
 
 import com.isel.ps.gateway.model.Role
+import org.springframework.dao.IncorrectResultSizeDataAccessException
 import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.jdbc.core.queryForObject
 import org.springframework.jdbc.support.GeneratedKeyHolder
 import org.springframework.jdbc.support.KeyHolder
 import org.springframework.stereotype.Repository
@@ -26,12 +28,16 @@ class RoleRepository(private val jdbcTemplate: JdbcTemplate) {
 
     fun getById(roleId: Int): Role? {
         val sql = "SELECT * FROM role WHERE role_id = ?"
-        return jdbcTemplate.queryForObject(sql) { rs, _ ->
-            Role(
-                roleId = rs.getInt("role_id"),
-                name = rs.getString("name"),
-                description = rs.getString("description")
-            )
+        return try {
+            jdbcTemplate.queryForObject(sql, roleId) { rs, _ ->
+                Role(
+                    roleId = rs.getInt("role_id"),
+                    name = rs.getString("name"),
+                    description = rs.getString("description")
+                )
+            }
+        } catch (_: IncorrectResultSizeDataAccessException) {
+            return null
         }
     }
 

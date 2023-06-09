@@ -1,10 +1,13 @@
 package com.isel.ps.gateway.db
 
 import com.isel.ps.gateway.model.Admin
+import org.springframework.dao.IncorrectResultSizeDataAccessException
 import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.jdbc.core.queryForObject
 import org.springframework.jdbc.support.GeneratedKeyHolder
 import org.springframework.jdbc.support.KeyHolder
 import org.springframework.stereotype.Repository
+import java.sql.ResultSet
 
 @Repository
 class AdminRepository(private val jdbcTemplate: JdbcTemplate) {
@@ -29,30 +32,31 @@ class AdminRepository(private val jdbcTemplate: JdbcTemplate) {
 
     fun getById(adminId: Int): Admin? {
         val sql = "SELECT * FROM admin WHERE admin_id = ?"
-        return jdbcTemplate.queryForObject(sql) { rs, _ ->
-            Admin(
-                adminId = rs.getInt("admin_id"),
-                name = rs.getString("name"),
-                description = rs.getString("description"),
-                owner = rs.getBoolean("owner"),
-                administrative = rs.getBoolean("administrative"),
-                permission = rs.getBoolean("permission")
-            )
+        return try {
+            jdbcTemplate.queryForObject(sql, adminId) { rs, _ ->
+                adminMapper(rs)
+            }
+        } catch (_: IncorrectResultSizeDataAccessException) {
+            return null
         }
     }
 
     fun getByName(name: String): Admin? {
         val sql = "SELECT * FROM admin WHERE name = ?"
-        return jdbcTemplate.queryForObject(sql) { rs, _ ->
-            Admin(
-                adminId = rs.getInt("admin_id"),
-                name = rs.getString("name"),
-                description = rs.getString("description"),
-                owner = rs.getBoolean("owner"),
-                administrative = rs.getBoolean("administrative"),
-                permission = rs.getBoolean("permission")
-            )
+        return try {
+            jdbcTemplate.queryForObject(sql, name) { rs, _ ->
+                adminMapper(rs)
+            }
+        } catch (_: IncorrectResultSizeDataAccessException) {
+            return null
         }
+    }
+
+    fun ownerExists(): Boolean {
+        val sql = "SELECT * FROM admin WHERE owner = true"
+        return jdbcTemplate.query(sql) { rs, _ ->
+            adminMapper(rs)
+        }.size > 0
     }
 
     fun update(admin: Admin) {
@@ -77,14 +81,16 @@ class AdminRepository(private val jdbcTemplate: JdbcTemplate) {
     fun getAll(): List<Admin> {
         val sql = "SELECT * FROM admin"
         return jdbcTemplate.query(sql) { rs, _ ->
-            Admin(
-                adminId = rs.getInt("admin_id"),
-                name = rs.getString("name"),
-                description = rs.getString("description"),
-                owner = rs.getBoolean("owner"),
-                administrative = rs.getBoolean("administrative"),
-                permission = rs.getBoolean("permission")
-            )
+            adminMapper(rs)
         }
     }
+
+    private fun adminMapper(rs: ResultSet) = Admin(
+        adminId = rs.getInt("admin_id"),
+        name = rs.getString("name"),
+        description = rs.getString("description"),
+        owner = rs.getBoolean("owner"),
+        administrative = rs.getBoolean("administrative"),
+        permission = rs.getBoolean("permission")
+    )
 }

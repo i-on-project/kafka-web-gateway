@@ -1,7 +1,9 @@
 package com.isel.ps.gateway.db
 
 import com.isel.ps.gateway.model.Subscription
+import org.springframework.dao.IncorrectResultSizeDataAccessException
 import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.jdbc.core.queryForObject
 import org.springframework.stereotype.Repository
 
 @Repository
@@ -13,13 +15,17 @@ class SubscriptionRepository(private val jdbcTemplate: JdbcTemplate) {
 
     fun getById(subscriptionId: Int): Subscription? {
         val sql = "SELECT * FROM subscription WHERE subscription_id = ?"
-        return jdbcTemplate.queryForObject(sql) { rs, _ ->
-            Subscription(
-                subscriptionId = rs.getInt("subscription_id"),
-                sessionId = rs.getLong("session_id"),
-                topic = rs.getString("topic"),
-                key = rs.getString("key")
-            )
+        return try {
+            jdbcTemplate.queryForObject(sql, subscriptionId) { rs, _ ->
+                Subscription(
+                    subscriptionId = rs.getInt("subscription_id"),
+                    sessionId = rs.getLong("session_id"),
+                    topic = rs.getString("topic"),
+                    key = rs.getString("key")
+                )
+            }
+        } catch (_: IncorrectResultSizeDataAccessException) {
+            return null
         }
     }
 
