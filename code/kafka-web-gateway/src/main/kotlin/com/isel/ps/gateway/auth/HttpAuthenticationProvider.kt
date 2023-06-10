@@ -5,7 +5,7 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.RestTemplate
 
-class RestAuthenticationProvider(private val authUrl: String, private val restTemplate: RestTemplate = RestTemplate()) :
+class HttpAuthenticationProvider(private val authUrl: String, private val restTemplate: RestTemplate = RestTemplate()) :
     AuthenticationProvider {
     override fun validateToken(token: String): String? {
         val headers = HttpHeaders()

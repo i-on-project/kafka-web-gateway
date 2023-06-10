@@ -42,7 +42,7 @@ data class ClientRole(
 )
 
 data class Permission(
-    var permissionId: Int,
+    var permissionId: Int?,
     val topic: String,
     val key: String?,
     val read: Boolean,
@@ -51,6 +51,11 @@ data class Permission(
 
 data class RolePermission(
     val roleId: Int,
+    val permissionId: Int
+)
+
+data class ClientPermission(
+    val clientId: Long,
     val permissionId: Int
 )
 

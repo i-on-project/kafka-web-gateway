@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.queryForObject
 import org.springframework.jdbc.support.GeneratedKeyHolder
 import org.springframework.jdbc.support.KeyHolder
 import org.springframework.stereotype.Repository
+import java.sql.ResultSet
 
 @Repository
 class RoleRepository(private val jdbcTemplate: JdbcTemplate) {
@@ -30,11 +31,18 @@ class RoleRepository(private val jdbcTemplate: JdbcTemplate) {
         val sql = "SELECT * FROM role WHERE role_id = ?"
         return try {
             jdbcTemplate.queryForObject(sql, roleId) { rs, _ ->
-                Role(
-                    roleId = rs.getInt("role_id"),
-                    name = rs.getString("name"),
-                    description = rs.getString("description")
-                )
+                roleMapper(rs)
+            }
+        } catch (_: IncorrectResultSizeDataAccessException) {
+            return null
+        }
+    }
+
+    fun getByName(name: String): Role? {
+        val sql = "SELECT * FROM role WHERE name = ?"
+        return try {
+            jdbcTemplate.queryForObject(sql, name) { rs, _ ->
+                roleMapper(rs)
             }
         } catch (_: IncorrectResultSizeDataAccessException) {
             return null
@@ -49,11 +57,13 @@ class RoleRepository(private val jdbcTemplate: JdbcTemplate) {
     fun getAll(): List<Role> {
         val sql = "SELECT * FROM role"
         return jdbcTemplate.query(sql) { rs, _ ->
-            Role(
-                roleId = rs.getInt("role_id"),
-                name = rs.getString("name"),
-                description = rs.getString("description")
-            )
+            roleMapper(rs)
         }
     }
+
+    private fun roleMapper(rs: ResultSet) = Role(
+        roleId = rs.getInt("role_id"),
+        name = rs.getString("name"),
+        description = rs.getString("description")
+    )
 }
