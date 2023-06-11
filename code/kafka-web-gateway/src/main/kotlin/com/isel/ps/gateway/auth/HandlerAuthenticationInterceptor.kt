@@ -2,10 +2,10 @@ package com.isel.ps.gateway.auth
 
 import com.isel.ps.gateway.model.AdminToken
 import com.isel.ps.gateway.service.AdminService
-import jakarta.servlet.http.HttpServletRequest
-import jakarta.servlet.http.HttpServletResponse
 import org.springframework.stereotype.Component
 import org.springframework.web.servlet.HandlerInterceptor
+import javax.servlet.http.HttpServletRequest
+import javax.servlet.http.HttpServletResponse
 
 @Component
 class HandlerAuthenticationInterceptor(val adminService: AdminService) : HandlerInterceptor {

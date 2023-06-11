@@ -1,5 +1,6 @@
 package com.isel.ps.gateway.websocket
 
+import com.isel.ps.gateway.db.SettingRepository
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.springframework.beans.factory.annotation.Value
@@ -16,7 +17,8 @@ import org.springframework.web.socket.server.HandshakeInterceptor
 class WebSocketConfig(
     private val kafkaProducer: KafkaProducer<String, String>,
     private val kafkaConsumer: KafkaConsumer<String, String>,
-    @Value("\${spring.kafka.bootstrap-servers}") private val bootstrapServers: String
+    @Value("\${spring.kafka.bootstrap-servers}") private val bootstrapServers: String,
+    private val settingRepository: SettingRepository
 ) : WebSocketConfigurer {
 
     override fun registerWebSocketHandlers(registry: WebSocketHandlerRegistry) {
@@ -32,7 +34,6 @@ class WebSocketConfig(
 
     @Bean
     fun myAuthenticationInterceptor(): HandshakeInterceptor {
-        return AuthenticationInterceptor()
+        return ClientAuthenticationInterceptor(settingRepository)
     }
-
 }

@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.isel.ps.gateway.model.*
 import com.isel.ps.gateway.utils.SendTask
-import com.isel.ps.gateway.websocket.AuthenticationInterceptor.Companion.USER_ID
+import com.isel.ps.gateway.websocket.ClientAuthenticationInterceptor.Companion.CLIENT_ID
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -125,7 +125,7 @@ class MyWebSocketHandler(
     override fun handleTransportError(session: WebSocketSession, exception: Throwable) {}
 
     private fun getUserIdFromSession(session: WebSocketSession): String {
-        return session.attributes[USER_ID] as String
+        return session.attributes[CLIENT_ID] as String
     }
 
     private fun sendAck(clientMessage: ClientMessage, session: WebSocketSession) {

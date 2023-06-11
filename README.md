@@ -16,8 +16,8 @@ cd ./code/kafka-web-gateway/
 
 * PostgreSQL Database
 * 2 Gateway's
-* 3 Apache Kafka's
-* 3 ZooKeeper's
+* 3 Apache Kafka Servers/Nodes
+* 3 ZooKeeper's Servers
 * Nginx
 
 ```
