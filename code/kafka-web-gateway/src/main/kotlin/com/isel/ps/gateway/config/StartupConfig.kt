@@ -45,12 +45,9 @@ class StartupConfig(
 
         var admin: Admin? = null
 
-        val adminRes = adminService.createAdmin(
+        val adminRes = adminService.createOwner(
             name = adminName!!,
-            description = adminDescription,
-            owner = true,
-            administrative = true,
-            permission = true
+            description = adminDescription
         )
 
         when (adminRes) {
@@ -74,7 +71,7 @@ class StartupConfig(
             logger.info("Property \"gateway.config.admin.token\" not set, ignoring token creation.")
         }
 
-        when (val tokenRes = adminService.createToken(adminToken!!, admin.adminId!!)) {
+        when (val tokenRes = adminService.createOwnerToken(adminToken!!, admin.adminId!!)) {
 
             is Result.Success -> {
                 logger.info("Admin token \"$adminToken\" created.")
@@ -98,7 +95,7 @@ class StartupConfig(
         val authServerSetting = settingService.getBySettingName(SettingType.AuthServer.settingName)
 
         if (authServerSetting == null) {
-            settingService.createSetting(
+            settingService.createOwnerSetting(
                 SettingType.AuthServer.settingName,
                 authServerEndpoint!!,
                 "Authentication server endpoint"

@@ -72,13 +72,13 @@ data class AdminToken(
     val tokenValidation: String,
     val adminId: Int,
     val createdAt: Timestamp?,
-    val lastUsedAt: Timestamp
+    val lastUsedAt: Timestamp?
 )
 
 data class Setting(
     val name: String,
     var value: String,
-    val description: String?,
+    var description: String?,
     val updatedAt: Timestamp
 )
 
