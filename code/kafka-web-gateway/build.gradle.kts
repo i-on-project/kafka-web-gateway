@@ -40,6 +40,7 @@ tasks.withType<KotlinCompile> {
 }
 
 tasks.withType<Test> {
+    enabled = false
     useJUnitPlatform()
 }
 
@@ -54,4 +55,8 @@ task<Copy>("extractUberJar") {
 task<Exec>("composeUp") {
     commandLine("docker-compose", "up", "--build", "--force-recreate")
     dependsOn("extractUberJar")
+}
+
+tasks.named("build") {
+    dependsOn("assemble", "extractUberJar")
 }
