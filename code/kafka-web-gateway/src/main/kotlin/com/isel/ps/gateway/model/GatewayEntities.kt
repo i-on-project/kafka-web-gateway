@@ -60,13 +60,15 @@ data class ClientPermission(
 )
 
 data class Admin(
-    val adminId: Int?,
+    var adminId: Int?,
     val name: String,
     val description: String?,
     val owner: Boolean,
     val administrative: Boolean,
     val permission: Boolean
-)
+) {
+    constructor() : this(null, "", "", false, false, false)
+}
 
 data class AdminToken(
     val tokenValidation: String,

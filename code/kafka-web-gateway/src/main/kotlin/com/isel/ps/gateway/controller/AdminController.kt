@@ -1,5 +1,6 @@
 package com.isel.ps.gateway.controller
 
+import com.isel.ps.gateway.auth.HandlerAuthenticationInterceptor.Companion.ADMIN_ID_ATTRIBUTE
 import com.isel.ps.gateway.model.Admin
 import com.isel.ps.gateway.model.Err
 import com.isel.ps.gateway.service.AdminService
@@ -12,6 +13,14 @@ import org.springframework.web.bind.annotation.*
 @RestController
 @RequestMapping("/api/admin")
 class AdminController(private val adminService: AdminService) {
+
+    @GetMapping("/{adminId}")
+    fun getAdmin(@PathVariable adminId: Int): ResponseEntity<*> {
+        return when (val createdRes = adminService.getAdmin(adminId)) {
+            is Result.Success -> ResponseEntity(createdRes.value, HttpStatus.OK)
+            is Result.Error -> ResponseEntity(Unit, HttpStatus.NOT_FOUND)
+        }
+    }
 
     @PostMapping
     fun createAdmin(@RequestBody admin: Admin, request: HttpServletRequest): ResponseEntity<*> {
@@ -97,7 +106,7 @@ class AdminController(private val adminService: AdminService) {
 
     // TODO: Move this to AuthenticationInterceptor
     private fun extractAdminFromRequest(request: HttpServletRequest): Admin? {
-        val adminId: Int = request.getAttribute("adminId") as Int? ?: return null
+        val adminId: Int = request.getAttribute(ADMIN_ID_ATTRIBUTE) as Int? ?: return null
 
         return adminService.getById(adminId)
     }

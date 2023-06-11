@@ -11,6 +11,13 @@ import org.springframework.stereotype.Service
 import java.sql.Timestamp
 import java.time.Instant
 
+sealed class AdminGetError {
+    object AdminNotFound : AdminGetError()
+}
+
+typealias AdminGetResult = Result<AdminGetError, Admin>
+
+
 sealed class AdminCreationError {
     object NoAdministrativePrivileges : AdminCreationError()
     object AdminAlreadyExists : AdminCreationError()
@@ -64,6 +71,19 @@ class AdminService(
     private val adminTokenRepository: AdminTokenRepository,
     private val tokenEncoder: TokenEncoder
 ) {
+    fun getAdmin(
+        adminId: Int
+    ): AdminGetResult {
+
+        val admin = adminRepository.getById(adminId)
+            ?: return Error(
+                AdminGetError.AdminNotFound,
+                "Admin \"$adminId\" not found."
+            )
+
+        return Result.Success(admin)
+    }
+
     fun createAdmin(
         name: String,
         description: String?,
@@ -94,7 +114,7 @@ class AdminService(
             )
         }
 
-        if (adminRepository.ownerExists()) {
+        if (owner && adminRepository.ownerExists()) {
             return Error(AdminCreationError.OwnerAlreadyExists, "An owner already exists.")
         }
 
