@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <title>Hello WebSocket</title>
+    <link href="bootstrap.min.css" rel="stylesheet">
+    <link href="main.css" rel="stylesheet">
+    <script src="main.js"></script>
+</head>
+<body>
+<noscript><h2 style="color: #ff0000">Seems your browser doesn't support Javascript! Websocket relies on Javascript being
+    enabled. Please enable
+    Javascript and reload this page!</h2></noscript>
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title">WebSocket Client</h5>
+        </div>
+        <div class="card-body">
+            <div class="form-group">
+                <label for="subscribeTopics">Subscribe Topics:</label>
+                <input type="text" class="form-control" id="subscribeTopics" placeholder="Enter topics">
+                <small class="form-text text-muted">Separate multiple topics with commas.</small>
+            </div>
+            <button class="btn btn-primary" onclick="subscribe()">Subscribe</button>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="card-title">Consume</h5>
+        </div>
+        <div class="card-body">
+            <div class="form-group">
+                <label for="consumeQuantity">Max Quantity:</label>
+                <input type="number" class="form-control" id="consumeQuantity" placeholder="Enter max quantity">
+            </div>
+            <div class="form-group">
+                <label for="consumeScale">Scale:</label>
+                <input type="text" class="form-control" id="consumeScale" placeholder="Enter scale">
+            </div>
+            <button class="btn btn-primary" onclick="consume()">Consume</button>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="card-title">Publish</h5>
+        </div>
+        <div class="card-body">
+            <div class="form-group">
+                <label for="publishTopic">Topic:</label>
+                <input type="text" class="form-control" id="publishTopic" placeholder="Enter topic">
+            </div>
+            <div class="form-group">
+                <label for="publishKey">Key:</label>
+                <input type="text" class="form-control" id="publishKey" placeholder="Enter key">
+            </div>
+            <div class="form-group">
+                <label for="publishValue">Value:</label>
+                <input type="text" class="form-control" id="publishValue" placeholder="Enter value">
+            </div>
+            <button class="btn btn-primary" onclick="publish()">Publish</button>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="card-title">Pause</h5>
+        </div>
+        <div class="card-body">
+            <div class="form-group">
+                <label for="pauseTopics">Topics:</label>
+                <input type="text" class="form-control" id="pauseTopics" placeholder="Enter topics">
+                <small class="form-text text-muted">Separate multiple topics with commas.</small>
+            </div>
+            <button class="btn btn-primary" onclick="pause()">Pause</button>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="card-title">Resume</h5>
+        </div>
+        <div class="card-body">
+            <div class="form-group">
+                <label for="resumeTopics">Topics:</label>
+                <input type="text" class="form-control" id="resumeTopics" placeholder="Enter topics">
+                <small class="form-text text-muted">Separate multiple topics with commas.</small>
+            </div>
+            <button class="btn btn-primary" onclick="resume()">Resume</button>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <h5>Output:</h5>
+        <ul id="output" class="list-group"></ul>
+    </div>
+</div>
+</body>
+</html>

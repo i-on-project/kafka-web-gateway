@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres
+    environment:
+      POSTGRES_DB: gateway_db
+      POSTGRES_USER: gateway_user
+      POSTGRES_PASSWORD: gateway_password
+      PGDATA: "/data/gateway"
+    volumes:
+      - dbgateway:/data/gateway
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+volumes:
+  dbgateway:
+    external: true
