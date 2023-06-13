@@ -3,32 +3,28 @@ package com.isel.ps.gateway.kafka
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.isel.ps.gateway.config.GatewayConfig
 import com.isel.ps.gateway.model.Subscription
-import com.isel.ps.gateway.utils.AddSubscriptionError
-import com.isel.ps.gateway.utils.AddSubscriptionResult
-import com.isel.ps.gateway.utils.AddSubscriptionSuccess
+import com.isel.ps.gateway.utils.*
+import com.isel.ps.gateway.websocket.ClientAuthenticationInterceptor
 import com.isel.ps.gateway.websocket.ClientSession
-import com.isel.ps.gateway.websocket.GatewayWebsocketHandler
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
-import org.springframework.stereotype.Component
-import org.springframework.web.socket.TextMessage
-import java.time.Duration
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
-import com.isel.ps.gateway.utils.Result
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import org.springframework.kafka.retrytopic.RetryTopicConfiguration
+import org.springframework.stereotype.Component
+import org.springframework.web.socket.TextMessage
+import org.springframework.web.socket.WebSocketMessage
+import org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorator
+import java.time.Duration
+import java.util.*
+import java.util.concurrent.*
 
 // TODO: Rule: Client interactions with this class only on at a time per client.
 @Component
 class RecordDealer(
     private val kafkaClientsUtils: KafkaClientsUtils,
-    private val myGatewayWebSocketHandler: GatewayWebsocketHandler,
     private val gatewayConfig: GatewayConfig,
     private val producer: KafkaProducer<String, String>
 ) {
@@ -38,11 +34,13 @@ class RecordDealer(
     private val keys: ConcurrentHashMap<Pair<String, String>, List<ClientSession>> = ConcurrentHashMap<Pair<String, String>, List<ClientSession>>()
     // Holds subscriptions that are NOT limited by keys.
     private val fullTopics: ConcurrentHashMap<String, List<ClientSession>> = ConcurrentHashMap<String, List<ClientSession>>()
-    private final val executor: ExecutorService = Executors.newSingleThreadExecutor() //TODO: temporary way to use particular thread
+    private final val consumerExecutor: ExecutorService = Executors.newSingleThreadExecutor() //TODO: temporary way to use particular thread
+    private final val messageExecutor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor() //TODO: temporary way to use particular thread
 
     // TODO: Debate this value
     private var consumerPollMillis: Long = 200L
     private val mapper = jacksonObjectMapper()
+    private val messageStatuses: ConcurrentMap<String, ConcurrentMap<String, Boolean>> = ConcurrentHashMap()
 
     private val logger: Logger = LoggerFactory.getLogger(RecordDealer::class.java)
 
@@ -50,7 +48,7 @@ class RecordDealer(
         val gatewayInstance = gatewayConfig.getGateway()
         consumer = KafkaConsumer(kafkaClientsUtils.getConsumerDefaultProperties(gatewayIdLongToConsumerIdString(gatewayInstance.gatewayId)))
         consumer.subscribe(listOf(gatewayInstance.topicClients))
-        executor.submit {
+        consumerExecutor.submit {
             // TODO: consider using consumer.wakeup and/or global boolean maybe
             while (true){
                 val records: ConsumerRecords<String, String>? = consumer.poll(Duration.ofMillis(consumerPollMillis))
@@ -78,7 +76,7 @@ class RecordDealer(
         logger.debug("RecordDealer dispatch() clients found -> [${clients.size}]")
 
         clients.forEach { clientSession ->
-            myGatewayWebSocketHandler.sendToClient(clientSession.session, TextMessage(record.value()))
+            clientSession.session.sendMessage(TextMessage(record.value()), 3)
         }
     }
 
@@ -126,6 +124,34 @@ class RecordDealer(
 
     fun removeSubscription() {
 
+    }
+
+    fun ConcurrentWebSocketSessionDecorator.sendMessage(textMessage: WebSocketMessage<*>, retries: Int = 3) {
+        val session = this
+        val userId = session.attributes[ClientAuthenticationInterceptor.CLIENT_ID] as String
+
+        val messageId = UUID.randomUUID().toString()
+
+        // Create a nested map for each user if it doesn't exist
+        messageStatuses.putIfAbsent(userId, ConcurrentHashMap())
+
+        messageStatuses[userId]!![messageId] = false
+
+        var remainingRetries = retries
+
+        logger.info("userId: $userId")
+        val sendTask = SendTask(
+            messageStatuses,
+            userId,
+            messageId,
+            remainingRetries,
+            session,
+            textMessage,
+            messageExecutor,
+            logger
+        )
+
+        messageExecutor.schedule(sendTask, 10000L, TimeUnit.MILLISECONDS)
     }
 
 

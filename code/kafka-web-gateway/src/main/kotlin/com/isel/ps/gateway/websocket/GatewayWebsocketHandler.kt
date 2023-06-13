@@ -3,6 +3,7 @@ package com.isel.ps.gateway.websocket
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.module.kotlin.readValue
+import com.isel.ps.gateway.db.SubscriptionRepository
 import com.isel.ps.gateway.kafka.RecordDealer
 import com.isel.ps.gateway.model.*
 import com.isel.ps.gateway.utils.SendTask
@@ -17,11 +18,11 @@ import org.springframework.stereotype.Component
 import org.springframework.web.socket.*
 import org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorator
 import java.util.*
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ConcurrentMap
+import java.util.concurrent.*
 
 @Component
 class GatewayWebsocketHandler(
+    private val subscriptionRepository: SubscriptionRepository,
     private val sessionsStorage: ClientSessions,
     private val kafkaProducer: KafkaProducer<String, String>,
     @Value("\${spring.kafka.bootstrap-servers}")
@@ -30,7 +31,7 @@ class GatewayWebsocketHandler(
 ) : WebSocketHandler {
 
     private val logger: Logger = LoggerFactory.getLogger(GatewayWebsocketHandler::class.java)
-    private var executor: Timer = Timer()
+    private var executor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
     // val subscriptions: MutableMap<String, List<TopicType>> = mutableMapOf()
 
     private val objectMapper = ObjectMapper().also {
@@ -181,11 +182,10 @@ class GatewayWebsocketHandler(
             logger
         )
 
-        executor.schedule(sendTask, 10000L)
+        executor.schedule(sendTask, 10000L, TimeUnit.MILLISECONDS)
     }
 
-    fun sendToClient(session: WebSocketSession, textMessage: WebSocketMessage<*>) {
-        val concurrentSession = ConcurrentWebSocketSessionDecorator(session, 5000, 65536) //TODO: repeated and hardcoded
-        concurrentSession.sendMessage(textMessage)
+    fun sendToClient(session: ConcurrentWebSocketSessionDecorator, textMessage: WebSocketMessage<*>) {
+        session.sendMessage(textMessage)
     }
 }

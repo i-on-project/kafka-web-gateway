@@ -4,6 +4,9 @@ import org.slf4j.Logger
 import org.springframework.web.socket.WebSocketMessage
 import org.springframework.web.socket.WebSocketSession
 import java.util.*
+import java.util.concurrent.Executor
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.TimeUnit
 
 class SendTask(
     private val messageStatuses: Map<String, Map<String, Boolean>>,
@@ -12,7 +15,7 @@ class SendTask(
     private val remainingRetries: Int,
     private val session: WebSocketSession,
     private val textMessage: WebSocketMessage<*>,
-    private val executor: Timer,
+    private val executor: ScheduledExecutorService,
     private val logger: Logger
 ) : TimerTask() {
     override fun run() {
@@ -42,6 +45,6 @@ class SendTask(
             executor,
             logger
         )
-        executor.schedule(newTask, 10000L)
+        executor.schedule(newTask, 10000L, TimeUnit.MILLISECONDS)
     }
 }
