@@ -15,25 +15,20 @@ import org.springframework.web.socket.server.HandshakeInterceptor
 @Configuration
 @EnableWebSocket
 class WebSocketConfig(
-    private val kafkaProducer: KafkaProducer<String, String>,
-    private val kafkaConsumer: KafkaConsumer<String, String>,
     @Value("\${spring.kafka.bootstrap-servers}") private val bootstrapServers: String,
-    private val settingRepository: SettingRepository
+    private val settingRepository: SettingRepository,
+    private val gatewayWebsocketHandler: GatewayWebsocketHandler
 ) : WebSocketConfigurer {
 
     override fun registerWebSocketHandlers(registry: WebSocketHandlerRegistry) {
-        registry.addHandler(myWebSocketHandler(), "/socket")
-            .addInterceptors(myAuthenticationInterceptor())
+        registry.addHandler(gatewayWebsocketHandler, "/socket")
+            .addInterceptors(gatewayAuthenticationInterceptor())
             .setAllowedOrigins("*")
     }
 
     @Bean
-    fun myWebSocketHandler(): WebSocketHandler {
-        return MyWebSocketHandler(kafkaProducer, kafkaConsumer, bootstrapServers)
-    }
-
-    @Bean
-    fun myAuthenticationInterceptor(): HandshakeInterceptor {
+    fun gatewayAuthenticationInterceptor(): HandshakeInterceptor {
         return ClientAuthenticationInterceptor(settingRepository)
     }
+
 }

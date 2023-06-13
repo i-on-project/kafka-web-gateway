@@ -3,6 +3,7 @@ package com.isel.ps.gateway.websocket
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.module.kotlin.readValue
+import com.isel.ps.gateway.kafka.RecordDealer
 import com.isel.ps.gateway.model.*
 import com.isel.ps.gateway.utils.SendTask
 import com.isel.ps.gateway.websocket.ClientAuthenticationInterceptor.Companion.CLIENT_ID
@@ -12,21 +13,23 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.stereotype.Component
 import org.springframework.web.socket.*
 import org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorator
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap
 
-
-class MyWebSocketHandler(
+@Component
+class GatewayWebsocketHandler(
+    private val sessionsStorage: ClientSessions,
     private val kafkaProducer: KafkaProducer<String, String>,
-    private val kafkaConsumer: KafkaConsumer<String, String>,
     @Value("\${spring.kafka.bootstrap-servers}")
-    private val bootstrapServers: String
+    private val bootstrapServers: String,
+    private val recordDealer: RecordDealer
 ) : WebSocketHandler {
 
-    private val logger: Logger = LoggerFactory.getLogger(MyWebSocketHandler::class.java)
+    private val logger: Logger = LoggerFactory.getLogger(GatewayWebsocketHandler::class.java)
     private var executor: Timer = Timer()
     // val subscriptions: MutableMap<String, List<TopicType>> = mutableMapOf()
 
@@ -49,6 +52,8 @@ class MyWebSocketHandler(
             is Subscribe -> {
                 val subscribeCommand = clientMessage.command
                 subscribeCommand.topics.forEach { topic ->
+                    val subscription: Subscription = Subscription((Math.random()*10000).toInt(), session.id, topic.topic, topic.key) //TODO: debate how to input the values..
+                    recordDealer.addSubscription(sessionsStorage.getClientSession(session.id)!!, subscription)
                     /*
                     val props = Properties()
                     props[ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG] = bootstrapServers
@@ -66,7 +71,7 @@ class MyWebSocketHandler(
                 concurrentSession.sendMessage(TextMessage("Please consume this message"), 3)
             }
 
-            is Publish -> {
+            is Publish -> { //TODO: Needs filtering/confirmation for sending records to topics
                 val publishCommand = clientMessage.command
                 val producerRecord = ProducerRecord(publishCommand.topic, publishCommand.key, publishCommand.value)
                 kafkaProducer.send(producerRecord) { _, err ->
@@ -103,15 +108,18 @@ class MyWebSocketHandler(
             }
         }
 
-        sendAck(clientMessage, session);
+        sendAck(clientMessage, session)
     }
 
     override fun afterConnectionEstablished(session: WebSocketSession) {
+        val concurrentSession = ConcurrentWebSocketSessionDecorator(session, 5000, 65536) // TODO: Consider the given values or create specific function for this object instance creation
+        sessionsStorage.addSession(concurrentSession)
         logger.info("New connection from {}.", getUserIdFromSession(session))
     }
 
     override fun afterConnectionClosed(session: WebSocketSession, closeStatus: CloseStatus) {
         val userId: String = getUserIdFromSession(session)
+        sessionsStorage.removeSession(session.id)
 
         // Remove the message statuses for the specific user
         messageStatuses.remove(userId)
@@ -134,7 +142,21 @@ class MyWebSocketHandler(
 
     private fun json(obj: Any) = TextMessage(objectMapper.writeValueAsString(obj))
 
-    private fun ConcurrentWebSocketSessionDecorator.sendMessage(textMessage: WebSocketMessage<*>, retries: Int = 3) {
+    private fun Timer.schedule(delay: Long, period: Long = 0, action: TimerTask.() -> Unit): TimerTask {
+        val task = object : TimerTask() {
+            override fun run() {
+                action()
+            }
+        }
+        if (period > 0) {
+            this.scheduleAtFixedRate(task, delay, period)
+        } else {
+            this.schedule(task, delay)
+        }
+        return task
+    }
+
+    fun ConcurrentWebSocketSessionDecorator.sendMessage(textMessage: WebSocketMessage<*>, retries: Int = 3) {
         val session = this
         val userId = getUserIdFromSession(this)
 
@@ -162,17 +184,8 @@ class MyWebSocketHandler(
         executor.schedule(sendTask, 10000L)
     }
 
-    private fun Timer.schedule(delay: Long, period: Long = 0, action: TimerTask.() -> Unit): TimerTask {
-        val task = object : TimerTask() {
-            override fun run() {
-                action()
-            }
-        }
-        if (period > 0) {
-            this.scheduleAtFixedRate(task, delay, period)
-        } else {
-            this.schedule(task, delay)
-        }
-        return task
+    fun sendToClient(session: WebSocketSession, textMessage: WebSocketMessage<*>) {
+        val concurrentSession = ConcurrentWebSocketSessionDecorator(session, 5000, 65536) //TODO: repeated and hardcoded
+        concurrentSession.sendMessage(textMessage)
     }
 }

@@ -25,7 +25,7 @@ data class Session(
 
 data class Subscription(
     val subscriptionId: Int,
-    val sessionId: Long,
+    val sessionId: String,
     val topic: String,
     val key: String?
 )

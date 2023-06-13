@@ -21,6 +21,14 @@ class KafkaConfig(
         props["value.serializer"] = "org.apache.kafka.common.serialization.StringSerializer"
         return KafkaProducer(props)
     }
+    @Bean
+    fun kafkaProducerLongKey(): KafkaProducer<Long, String> {
+        val props = Properties()
+        props["bootstrap.servers"] = bootstrapServers
+        props["key.serializer"] = "org.apache.kafka.common.serialization.LongSerializer"
+        props["value.serializer"] = "org.apache.kafka.common.serialization.StringSerializer"
+        return KafkaProducer(props)
+    }
 
     @Bean
     fun kafkaConsumer(): KafkaConsumer<String, String> {

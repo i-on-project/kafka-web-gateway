@@ -47,7 +47,7 @@ class Ack : Command("ack")
 
 data class Err(val message: String?) : Command("error")
 
-data class TopicType(val topic: String, val partition: Int?)
+data class TopicType(val topic: String, val key: String?)
 
 
 class CommandDeserializer : JsonDeserializer<Command>() {
@@ -74,8 +74,8 @@ class TopicTypeDeserializer : JsonDeserializer<TopicType>() {
     override fun deserialize(p: JsonParser?, ctxt: DeserializationContext?): TopicType {
         val node = p?.codec?.readTree<JsonNode>(p)
         val topic = node?.get("topic")?.asText()
-        val partition = node?.get("partition")?.asInt()
+        val key = node?.get("key")?.asText()
 
-        return TopicType(topic!!, partition)
+        return TopicType(topic!!, key)
     }
 }
