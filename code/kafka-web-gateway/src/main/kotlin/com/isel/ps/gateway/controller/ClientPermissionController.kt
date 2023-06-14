@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.*
 @RestController
 @RequestMapping("/api/client-permission")
 class ClientPermissionController(private val clientPermissionService: ClientPermissionService) {
-
     @PostMapping
     fun createClientPermission(@RequestBody clientPermission: ClientPermission): ResponseEntity<*> {
         return when (val createdRes = clientPermissionService.createClientPermission(clientPermission)) {
@@ -22,7 +21,7 @@ class ClientPermissionController(private val clientPermissionService: ClientPerm
 
     @DeleteMapping("/{clientId}/{permissionId}")
     fun deleteClientPermission(
-        @PathVariable clientId: Long,
+        @PathVariable clientId: String,
         @PathVariable permissionId: Int
     ): ResponseEntity<*> {
         return when (val deleteRes = clientPermissionService.deleteClientPermission(clientId, permissionId)) {

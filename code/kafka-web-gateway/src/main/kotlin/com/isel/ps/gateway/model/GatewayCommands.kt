@@ -1,6 +1,5 @@
 package com.isel.ps.gateway.model
 
-import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.core.JsonParser
@@ -9,7 +8,7 @@ import com.fasterxml.jackson.databind.JsonDeserializer
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "type")
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
 @JsonSubTypes(
     JsonSubTypes.Type(value = Subscribe::class, name = "subscribe"),
     JsonSubTypes.Type(value = Consume::class, name = "consume"),
@@ -19,10 +18,10 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize
     JsonSubTypes.Type(value = Ack::class, name = "ack"),
     JsonSubTypes.Type(value = Err::class, name = "error")
 )
-open class Command(@JsonProperty("type") val type: String)
+open class Command(val type: String)
 
 data class ClientMessage(
-    val messageID: String,
+    var messageId: String?,
     @JsonDeserialize(using = CommandDeserializer::class)
     val command: Command
 ) {
@@ -37,7 +36,9 @@ data class Consume(val maxQuantity: Int?, val scale: String?) : Command("consume
     constructor() : this(null, null)
 }
 
-data class Publish(val topic: String, val key: String, val value: String) : Command("publish")
+data class Publish(val topic: String, val key: String?, val value: String) : Command("publish") {
+    constructor() : this("", null, "")
+}
 
 data class Pause(val topics: List<TopicType>) : Command("pause")
 

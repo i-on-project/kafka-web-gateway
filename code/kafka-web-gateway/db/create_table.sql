@@ -1,6 +1,6 @@
 create table if not exists client
 (
-    client_id bigint primary key
+    client_id varchar(255) primary key
 );
 
 create table if not exists gateway
@@ -14,8 +14,8 @@ create table if not exists gateway
 
 create table if not exists session
 (
-    session_id bigint primary key,
-    client_id  bigint references client (client_id) on delete cascade on update cascade,
+    session_id varchar(255) primary key,
+    client_id  varchar(255) references client (client_id) on delete cascade on update cascade,
     gateway_id bigint references gateway (gateway_id) on delete cascade on update cascade,
     created_at timestamp default now(),
     updated_at timestamp not null,
@@ -25,7 +25,7 @@ create table if not exists session
 create table if not exists subscription
 (
     subscription_id int generated always as identity primary key,
-    session_id      bigint       not null references session (session_id) on delete cascade on update cascade,
+    session_id      varchar(255)       not null references session (session_id) on delete cascade on update cascade,
     topic           varchar(255) not null,
     key             varchar(255),
     unique (session_id, topic, key)
@@ -40,7 +40,7 @@ create table if not exists role
 
 create table if not exists client_role
 (
-    client_id bigint references client (client_id) on delete cascade on update cascade,
+    client_id varchar(255) references client (client_id) on delete cascade on update cascade,
     role_id   int references role (role_id) on delete cascade on update cascade,
     primary key (client_id, role_id)
 );
@@ -64,7 +64,7 @@ create table if not exists role_permission
 
 create table if not exists client_permission
 (
-    client_id     bigint references client (client_id) on delete cascade on update cascade,
+    client_id     varchar(255) references client (client_id) on delete cascade on update cascade,
     permission_id int references permission (permission_id) on delete cascade on update cascade,
     primary key (client_id, permission_id)
 );

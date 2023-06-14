@@ -14,12 +14,12 @@ class ClientRepository(private val jdbcTemplate: JdbcTemplate) {
         jdbcTemplate.update(sql, client.clientId)
     }
 
-    fun delete(clientId: Long) {
+    fun delete(clientId: String) {
         val sql = "DELETE FROM client WHERE client_id = ?"
         jdbcTemplate.update(sql, clientId)
     }
 
-    fun exists(clientId: Long): Boolean {
+    fun exists(clientId: String): Boolean {
         val sql = "SELECT * FROM client WHERE client_id = ?"
 
         return try {
@@ -40,6 +40,6 @@ class ClientRepository(private val jdbcTemplate: JdbcTemplate) {
     }
 
     private fun clientMapper(rs: ResultSet) = Client(
-        clientId = rs.getLong("client_id")
+        clientId = rs.getString("client_id")
     )
 }

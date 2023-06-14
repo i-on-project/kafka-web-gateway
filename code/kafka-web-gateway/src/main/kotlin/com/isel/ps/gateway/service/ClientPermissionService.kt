@@ -53,7 +53,7 @@ class ClientPermissionService(
     }
 
     fun deleteClientPermission(
-        clientId: Long,
+        clientId: String,
         permissionId: Int
     ): ClientPermissionDeletionResult {
 

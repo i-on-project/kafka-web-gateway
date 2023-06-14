@@ -53,7 +53,7 @@ class ClientRoleService(
     }
 
     fun deleteClientRole(
-        clientId: Long,
+        clientId: String,
         roleId: Int
     ): ClientRoleDeletionResult {
 

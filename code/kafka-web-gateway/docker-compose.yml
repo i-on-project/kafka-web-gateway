@@ -1,15 +1,9 @@
 version: "3.9"
 
-networks:
-  app-tier:
-    driver: bridge
-
 services:
   db-g06-tests:
     container_name: db-g06-tests
     hostname: db-g06-tests
-    networks:
-      - app-tier
     build:
       context: .
       dockerfile: docker/gateway/Dockerfile-db-test
@@ -23,8 +17,6 @@ services:
   spring-service-1:
     container_name: spring-service-1
     hostname: spring-service-1
-    networks:
-      - app-tier
     build:
       context: .
       dockerfile: docker/gateway/Dockerfile-spring
@@ -36,7 +28,7 @@ services:
       POSTGRES-PWD: "gateway_password"
       OWNER-NAME: "owner"
       OWNER-TOKEN: "348fd1e9-d401-4f4a-b4ab-917297d522c7"
-      AUTH-SERVER-URI: "http://auth.me/endpoint"
+      AUTH-SERVER-URI: "http://localhost:8089/authenticate"
     ports:
       - "8081:8081"
     depends_on:
@@ -48,8 +40,6 @@ services:
   spring-service-2:
     container_name: spring-service-2
     hostname: spring-service-2
-    networks:
-      - app-tier
     build:
       context: .
       dockerfile: docker/gateway/Dockerfile-spring
@@ -61,7 +51,7 @@ services:
       POSTGRES-PWD: "gateway_password"
       OWNER-NAME: "owner"
       OWNER-TOKEN: "348fd1e9-d401-4f4a-b4ab-917297d522c7"
-      AUTH-SERVER-URI: "http://auth.me/endpoint"
+      AUTH-SERVER-URI: "http://localhost:8089/authenticate"
     ports:
       - "8082:8082"
     depends_on:
@@ -74,8 +64,6 @@ services:
     container_name: zookeeper-1
     hostname: zookeeper-1
     image: bitnami/zookeeper:3.8
-    networks:
-      - app-tier
     ports:
       - '21811:2181'
     environment:
@@ -86,8 +74,6 @@ services:
     container_name: zookeeper-2
     hostname: zookeeper-2
     image: bitnami/zookeeper:3.8
-    networks:
-      - app-tier
     ports:
       - '21812:2181'
     environment:
@@ -98,8 +84,6 @@ services:
     container_name: zookeeper-3
     hostname: zookeeper-3
     image: bitnami/zookeeper:3.8
-    networks:
-      - app-tier
     ports:
       - '21813:2181'
     environment:
@@ -109,8 +93,6 @@ services:
 
   kafka-1:
     image: 'bitnami/kafka:3.4'
-    networks:
-      - app-tier
     ports:
       - '29092:29092'
     environment:
@@ -129,8 +111,6 @@ services:
 
   kafka-2:
     image: 'bitnami/kafka:3.4'
-    networks:
-      - app-tier
     ports:
       - '39092:39092'
     environment:
@@ -149,8 +129,6 @@ services:
 
   kafka-3:
     image: 'bitnami/kafka:3.4'
-    networks:
-      - app-tier
     ports:
       - '49092:49092'
     environment:
@@ -171,8 +149,6 @@ services:
   nginx:
     container_name: nginx
     image: nginx
-    networks:
-      - app-tier
     ports:
       - "8080:8080"
       - "8088:8088"

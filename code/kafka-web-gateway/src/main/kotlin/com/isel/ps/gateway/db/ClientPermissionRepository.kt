@@ -16,12 +16,12 @@ class ClientPermissionRepository(private val jdbcTemplate: JdbcTemplate) {
         return clientPermission
     }
 
-    fun delete(clientId: Long, permissionId: Int) {
+    fun delete(clientId: String, permissionId: Int) {
         val sql = "DELETE FROM client_permission WHERE client_id = ? AND permission_id = ?"
         jdbcTemplate.update(sql, clientId, permissionId)
     }
 
-    fun exists(clientId: Long, permissionId: Int): Boolean {
+    fun exists(clientId: String, permissionId: Int): Boolean {
         val sql = "SELECT * FROM client_permission WHERE client_id = ? AND permission_id = ?"
 
         return try {
@@ -42,7 +42,7 @@ class ClientPermissionRepository(private val jdbcTemplate: JdbcTemplate) {
     }
 
     private fun clientPermissionMapper(rs: ResultSet) = ClientPermission(
-        clientId = rs.getLong("client_id"),
+        clientId = rs.getString("client_id"),
         permissionId = rs.getInt("permission_id")
     )
 }

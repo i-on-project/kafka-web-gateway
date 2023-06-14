@@ -15,7 +15,7 @@ class ClientRoleRepository(private val jdbcTemplate: JdbcTemplate) {
         return clientRole
     }
 
-    fun exists(clientId: Long, roleId: Int): Boolean {
+    fun exists(clientId: String, roleId: Int): Boolean {
         val sql = "SELECT * FROM client_role WHERE client_id = ? AND role_id = ?"
 
         return try {
@@ -28,7 +28,7 @@ class ClientRoleRepository(private val jdbcTemplate: JdbcTemplate) {
         }
     }
 
-    fun delete(clientId: Long, roleId: Int) {
+    fun delete(clientId: String, roleId: Int) {
         val sql = "DELETE FROM client_role WHERE client_id = ? AND role_id = ?"
         jdbcTemplate.update(sql, clientId, roleId)
     }
@@ -41,7 +41,7 @@ class ClientRoleRepository(private val jdbcTemplate: JdbcTemplate) {
     }
 
     private fun clientRoleMapper(rs: ResultSet) = ClientRole(
-        clientId = rs.getLong("client_id"),
+        clientId = rs.getString("client_id"),
         roleId = rs.getInt("role_id")
     )
 }

@@ -22,13 +22,13 @@ class SessionRepository(private val jdbcTemplate: JdbcTemplate) {
         )
     }
 
-    fun getById(sessionId: Long): Session? {
+    fun getById(sessionId: String): Session? {
         val sql = "SELECT * FROM session WHERE session_id = ?"
         return try {
             jdbcTemplate.queryForObject(sql, sessionId) { rs, _ ->
                 Session(
-                    sessionId = rs.getLong("session_id"),
-                    clientId = rs.getLong("client_id"),
+                    sessionId = rs.getString("session_id"),
+                    clientId = rs.getString("client_id"),
                     gatewayId = rs.getLong("gateway_id"),
                     createdAt = rs.getTimestamp("created_at"),
                     updatedAt = rs.getTimestamp("updated_at"),
@@ -40,7 +40,7 @@ class SessionRepository(private val jdbcTemplate: JdbcTemplate) {
         }
     }
 
-    fun delete(sessionId: Long) {
+    fun delete(sessionId: String) {
         val sql = "DELETE FROM session WHERE session_id = ?"
         jdbcTemplate.update(sql, sessionId)
     }
@@ -49,8 +49,8 @@ class SessionRepository(private val jdbcTemplate: JdbcTemplate) {
         val sql = "SELECT * FROM session"
         return jdbcTemplate.query(sql) { rs, _ ->
             Session(
-                sessionId = rs.getLong("session_id"),
-                clientId = rs.getLong("client_id"),
+                sessionId = rs.getString("session_id"),
+                clientId = rs.getString("client_id"),
                 gatewayId = rs.getLong("gateway_id"),
                 createdAt = rs.getTimestamp("created_at"),
                 updatedAt = rs.getTimestamp("updated_at"),

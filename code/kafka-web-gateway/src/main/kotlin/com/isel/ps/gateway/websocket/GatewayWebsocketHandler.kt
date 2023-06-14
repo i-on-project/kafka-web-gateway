@@ -8,7 +8,6 @@ import com.isel.ps.gateway.kafka.RecordDealer
 import com.isel.ps.gateway.model.*
 import com.isel.ps.gateway.utils.SendTask
 import com.isel.ps.gateway.websocket.ClientAuthenticationInterceptor.Companion.CLIENT_ID
-import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.slf4j.Logger
@@ -47,6 +46,7 @@ class GatewayWebsocketHandler(
         val concurrentSession = ConcurrentWebSocketSessionDecorator(session, 5000, 65536)
         val payload = message.payload as String
         val clientMessage = objectMapper.readValue<ClientMessage>(payload)
+        clientMessage.messageId = UUID.randomUUID().toString()
         println("handleMessage: $clientMessage")
 
         when (clientMessage.command) {
@@ -98,8 +98,8 @@ class GatewayWebsocketHandler(
                 val userMessageStatuses = messageStatuses[getUserIdFromSession(session)]
 
                 if (userMessageStatuses != null) {
-                    userMessageStatuses[clientMessage.messageID] = true
-                    logger.info("[${clientMessage.messageID}] message acked")
+                    userMessageStatuses[clientMessage.messageId] = true
+                    logger.info("[${clientMessage.messageId}] message acked")
                 }
             }
 
@@ -109,7 +109,7 @@ class GatewayWebsocketHandler(
             }
         }
 
-        sendAck(clientMessage, session)
+        // sendAck(clientMessage, session)
     }
 
     override fun afterConnectionEstablished(session: WebSocketSession) {
@@ -138,7 +138,7 @@ class GatewayWebsocketHandler(
     }
 
     private fun sendAck(clientMessage: ClientMessage, session: WebSocketSession) {
-        session.sendMessage(json(ClientMessage(clientMessage.messageID, Ack())))
+        session.sendMessage(json(ClientMessage(clientMessage.messageId, Ack())))
     }
 
     private fun json(obj: Any) = TextMessage(objectMapper.writeValueAsString(obj))

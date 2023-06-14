@@ -46,7 +46,7 @@ class ClientAuthenticationInterceptor(private val settingRepository: SettingRepo
         }
 
         val authenticationProvider =
-            HttpAuthenticationProvider(settingRepository.getBySettingName(SettingType.AuthServer.settingName)!!.name)
+            HttpAuthenticationProvider(settingRepository.getBySettingName(SettingType.AuthServer.settingName)!!.value)
         val client = authenticationProvider.validateToken(authorizationToken)
 
         if (client == null) {

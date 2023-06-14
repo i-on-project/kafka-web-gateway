@@ -3,7 +3,7 @@ package com.isel.ps.gateway.model
 import java.sql.Timestamp
 
 data class Client(
-    val clientId: Long
+    val clientId: String
 )
 
 data class Gateway(
@@ -15,8 +15,8 @@ data class Gateway(
 )
 
 data class Session(
-    val sessionId: Long,
-    val clientId: Long,
+    val sessionId: String,
+    val clientId: String,
     val gatewayId: Long,
     val createdAt: Timestamp,
     val updatedAt: Timestamp,
@@ -37,7 +37,7 @@ data class Role(
 )
 
 data class ClientRole(
-    val clientId: Long,
+    val clientId: String,
     val roleId: Int
 )
 
@@ -55,7 +55,7 @@ data class RolePermission(
 )
 
 data class ClientPermission(
-    val clientId: Long,
+    val clientId: String,
     val permissionId: Int
 )
 

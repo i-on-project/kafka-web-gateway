@@ -22,7 +22,7 @@ class ClientRoleController(private val clientRoleService: ClientRoleService) {
 
     @DeleteMapping("/{clientId}/{roleId}")
     fun deleteClientRole(
-        @PathVariable clientId: Long,
+        @PathVariable clientId: String,
         @PathVariable roleId: Int
     ): ResponseEntity<*> {
         return when (val deleteRes = clientRoleService.deleteClientRole(clientId, roleId)) {
