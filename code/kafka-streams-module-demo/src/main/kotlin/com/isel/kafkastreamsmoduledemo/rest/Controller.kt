@@ -3,19 +3,21 @@ package com.isel.kafkastreamsmoduledemo.rest
 import com.isel.kafkastreamsmoduledemo.kafkaStreamsExperimentations.GlobalKTables
 import com.isel.kafkastreamsmoduledemo.kafkaStreamsExperimentations.KStreamsHandler
 import com.isel.kafkastreamsmoduledemo.kafkaStreamsExperimentations.UseCase
-import com.isel.kafkastreamsmoduledemo.utils.KafkaStreamsUtils.Companion.DEFAULT_STREAM_ID
+import com.isel.kafkastreamsmoduledemo.recordRouter.RRTesting
+import com.isel.kafkastreamsmoduledemo.utilsExperimentations.KafkaStreamsUtils.Companion.DEFAULT_STREAM_ID
 import org.springframework.web.bind.annotation.*
 
 @RestController
 class Controller(
     private val streamsHandler: KStreamsHandler,
     private val globalKTables: GlobalKTables,
-    private val useCase: UseCase
+    private val useCase: UseCase,
+    private val rrTesting: RRTesting
 ) {
 
     @GetMapping("/test")
     fun testEndpoint(): String {
-        println("this is the controller")
+        rrTesting.test()
         return "yes, hello"
     }
 

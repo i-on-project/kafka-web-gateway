@@ -1,11 +1,10 @@
 package com.isel.kafkastreamsmoduledemo.kafkaStreamsExperimentations
 
-import com.isel.kafkastreamsmoduledemo.utils.KafkaStreamsUtils
-import com.isel.kafkastreamsmoduledemo.utils.TopicKeys
-import com.isel.kafkastreamsmoduledemo.utils.TopicKeysArraySerDe
+import com.isel.kafkastreamsmoduledemo.utilsExperimentations.KafkaStreamsUtils
+import com.isel.kafkastreamsmoduledemo.utilsExperimentations.TopicKeys
+import com.isel.kafkastreamsmoduledemo.utilsExperimentations.TopicKeysArraySerDe
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
-import org.apache.kafka.common.MetricName
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.common.utils.Bytes
 import org.apache.kafka.streams.KafkaStreams

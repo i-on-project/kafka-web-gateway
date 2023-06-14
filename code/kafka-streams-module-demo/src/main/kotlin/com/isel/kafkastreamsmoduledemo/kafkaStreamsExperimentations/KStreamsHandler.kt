@@ -1,10 +1,8 @@
 package com.isel.kafkastreamsmoduledemo.kafkaStreamsExperimentations
 
-import com.isel.kafkastreamsmoduledemo.utils.KafkaStreamsUtils
-import com.isel.kafkastreamsmoduledemo.utils.KafkaStreamsUtils.Companion.KEY_FILTER_STORE
-import com.isel.kafkastreamsmoduledemo.utils.TopicKeys
-import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.apache.kafka.clients.consumer.KafkaConsumer
+import com.isel.kafkastreamsmoduledemo.utilsExperimentations.KafkaStreamsUtils
+import com.isel.kafkastreamsmoduledemo.utilsExperimentations.KafkaStreamsUtils.Companion.KEY_FILTER_STORE
+import com.isel.kafkastreamsmoduledemo.utilsExperimentations.TopicKeys
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.*
 import org.apache.kafka.streams.KafkaStreams
@@ -18,10 +16,8 @@ import org.apache.kafka.streams.processor.api.Record
 import org.apache.kafka.streams.state.KeyValueStore
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
-import java.time.Duration
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.concurrent.thread
 
 
 @Component
