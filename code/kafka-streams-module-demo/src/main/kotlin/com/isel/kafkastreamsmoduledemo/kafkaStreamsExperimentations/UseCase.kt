@@ -26,7 +26,7 @@ class UseCase(
     val kStreamsHandler: KStreamsHandler,
     val globalKTables: GlobalKTables
 ) {
-    private val keyStorage: ReadOnlyKeyValueStore<String, ValueAndTimestamp<Array<TopicKeys>>> = startStore()
+    private val keyStorage: ReadOnlyKeyValueStore<String, ValueAndTimestamp<Array<TopicKeys>>>? = null //= startStore()
     companion object {
         private val STORE_TOPIC: String = "store-topic"
         private val STORE_NAME: String = "store-name"
@@ -109,11 +109,11 @@ class UseCase(
         val builder = StreamsBuilder()
         val inputStream: KStream<Long, String> = builder.stream(inputTopic, Consumed.with(Serdes.Long(), Serdes.String()))
 
-        for (gatewayEntry in keyStorage.all().iterator()) {
+        /* for (gatewayEntry in keyStorage.all().iterator()) {
             KafkaStreamsUtils.printlnBetweenColoredLines("gateway entry key[${gatewayEntry.key}]", KafkaStreamsUtils.PURPLE_TEXT)
 
             inputStream.filter {key, value -> isKeyForGateway(key, gatewayEntry.key, inputTopic)}.to(gatewayEntry.key)
-        }
+        }*/
 
         val stream = KafkaStreams(builder.build(), utils.getStreamDefaultProperties())
         utils.streamsMap.put(inputTopic ,stream)
@@ -127,7 +127,7 @@ class UseCase(
 
     private fun isKeyForGateway(key: Long, gateway: String, inputTopic: String): Boolean {
         KafkaStreamsUtils.printlnBetweenColoredLines("isKeyForGateway key[$key] gateway[$gateway] inputTopic[$inputTopic]", KafkaStreamsUtils.PURPLE_TEXT)
-        for (topicKeys in keyStorage.get(gateway).value()) {
+        /*for (topicKeys in keyStorage.get(gateway).value()) {
             if (topicKeys.topic == inputTopic) {
                 for (topicKey in topicKeys.keys) {
                     if (topicKey == key) {
@@ -135,7 +135,7 @@ class UseCase(
                     }
                 }
             }
-        }
+        }*/
         return false
     }
 

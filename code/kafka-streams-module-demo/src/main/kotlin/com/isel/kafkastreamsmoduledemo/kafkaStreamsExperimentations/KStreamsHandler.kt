@@ -77,7 +77,7 @@ class KStreamsHandler(
             ))
         ))
 
-        loggerConsumer(listOf("gateway01", "gateway02", "gateway03"))
+        //loggerConsumer(listOf("gateway01", "gateway02", "gateway03"))
     }
 
     fun insertToGatewayKeys(gateway: String) {

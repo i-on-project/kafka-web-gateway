@@ -32,6 +32,7 @@ class KafkaStreamsUtils(
         const val GREEN_TEXT = "\u001B[32m"
         const val PURPLE_TEXT = "\u001B[35m"
         const val YELLOW_TEXT = "\u001B[33m"
+        const val RED_TEXT = "\u001B[31m"
         const val RESET_TEXT_COLOR = "\u001B[0m"
 
         fun getTopologyMetrics(stream: KafkaStreams) {

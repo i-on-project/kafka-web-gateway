@@ -1,21 +1,45 @@
 package com.isel.kafkastreamsmoduledemo.recordRouter
 
-import com.isel.kafkastreamsmoduledemo.utilsExperimentations.KafkaStreamsUtils
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.Serdes
-import org.apache.kafka.streams.KafkaStreams
+import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.streams.StreamsConfig
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import java.util.*
-import java.util.concurrent.ConcurrentHashMap
 
 @Component
 class RecordRouterUtils(
     @Value("\${spring.kafka.bootstrap-servers}")
     private val bootstrapServers: String
 ) {
+    private val RED_TEXT = "\u001B[31m"
+    private val RESET_TEXT_COLOR = "\u001B[0m"
+
+    fun printRed(message: String) {
+        println("${RED_TEXT}${message}${RESET_TEXT_COLOR}")
+    }
+
+    fun getSystemTopicConsumerProperties(groupId: String): Properties {
+        val props = Properties()
+        props[ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG] = bootstrapServers
+        props[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] = "earliest"
+        props[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = StringDeserializer::class.java.name
+        props[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = StringDeserializer::class.java.name
+        props[ConsumerConfig.GROUP_ID_CONFIG] = groupId
+        return props
+    }
+
+    fun getGatewayKeysTopicConsumerProperties(groupId: String): Properties {
+        val props = Properties()
+        props[ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG] = bootstrapServers
+        props[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] = "earliest"
+        props[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = StringDeserializer::class.java.name
+        props[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = StringDeserializer::class.java.name
+        props[ConsumerConfig.GROUP_ID_CONFIG] = groupId
+        return props
+    }
 
     fun systemTopicStreamProperties(offsetConfig: String = "latest", streamId: String): Properties {
         val props = Properties()
