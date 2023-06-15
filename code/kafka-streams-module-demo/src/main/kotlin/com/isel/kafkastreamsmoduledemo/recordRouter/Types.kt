@@ -5,7 +5,8 @@ import java.util.concurrent.ConcurrentHashMap
 data class SystemGatewayKeyTopic(
     val gatewayId: String,
     val keysTopicName: String,
-    val clientTopicName: String
+    val clientTopicName: String,
+    val commandsTopicName: String?
 )
 
 data class GatewayDetails (
