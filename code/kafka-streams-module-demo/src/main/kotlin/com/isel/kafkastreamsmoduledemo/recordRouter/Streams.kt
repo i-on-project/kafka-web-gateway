@@ -42,15 +42,22 @@ class Streams(
 
         val systemTopic: String = "SYSTEM_TOPIC"
         val inputTopicA: String = "input-topic-a"
+        val inputTopicB: String = "input-topic-b"
 
         rrTesting.deleteTopic(systemTopic)
         rrTesting.deleteTopic(inputTopicA)
+        rrTesting.deleteTopic(inputTopicB)
         rrTesting.deleteTopic("gateway-01-clients-topic")
         rrTesting.deleteTopic("gateway-01-keys-topic")
+        rrTesting.deleteTopic("gateway-02-clients-topic")
+        rrTesting.deleteTopic("gateway-02-keys-topic")
         rrTesting.createTopic(systemTopic,3,3)
         rrTesting.createTopic(inputTopicA,3,3)
+        rrTesting.createTopic(inputTopicB,3,3)
         rrTesting.createTopic("gateway-01-clients-topic",3,3)
         rrTesting.createTopic("gateway-01-keys-topic",3,3)
+        rrTesting.createTopic("gateway-02-clients-topic",3,3)
+        rrTesting.createTopic("gateway-02-keys-topic",3,3)
 
         listenSystemTopic()
     }
@@ -75,7 +82,7 @@ class Streams(
                                 val systemGatewayKeyTopic: SystemGatewayKeyTopic =
                                     mapper.readValue<SystemGatewayKeyTopic>(record.value())
                                 updateGatewayKeysTopicsSubscriptions(systemGatewayKeyTopic)
-                                //streamsStorage.restartAllDefaultRoutingStreams()
+                                kClientsStorage.restartAllDefaultRoutingStreams()
                             }
 
                             else -> {
@@ -171,8 +178,12 @@ class Streams(
             consumer = createGatewayKeysConsumer()
             kClientsStorage.setGatewayKeysConsumer(consumer) {createGatewayKeysConsumer()}
         } else {
+            recordRouterUtils.printRed("updateGatewayKeysTopicsSubscriptions before wakeup")
             consumer.wakeup()
+            consumer = createGatewayKeysConsumer() // TODO: Temporary
+            kClientsStorage.setGatewayKeysConsumer(consumer) {createGatewayKeysConsumer()} // TODO: Temporary
         }
+        recordRouterUtils.printRed("updateGatewayKeysTopicsSubscriptions after consumer==null if-else")
 
 
         gatewaysDetails.compute(systemGatewayKeyTopic.gatewayId) { gatewayId, details ->

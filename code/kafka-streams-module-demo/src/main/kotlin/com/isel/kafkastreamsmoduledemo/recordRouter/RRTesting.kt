@@ -33,25 +33,29 @@ class RRTesting(
     }
 
     private val mapper = jacksonObjectMapper()
-    private final val consumerExecutor: ExecutorService = Executors.newFixedThreadPool(5)
+    private final val consumerExecutor: ExecutorService = Executors.newFixedThreadPool(20)
 
     fun test() {
 
 
         val systemTopic: String = "SYSTEM_TOPIC"
         val inputTopicA: String = "input-topic-a"
+        val inputTopicB: String = "input-topic-b"
 
         runConsumer(systemTopic)
         runConsumer(inputTopicA)
+        runConsumer(inputTopicB)
         runConsumer("gateway-01-clients-topic")
         runConsumer("gateway-01-keys-topic")
+        runConsumer("gateway-02-clients-topic")
+        runConsumer("gateway-02-keys-topic")
         val props = Properties()
         props["bootstrap.servers"] = bootstrapServers
         props["key.serializer"] = "org.apache.kafka.common.serialization.StringSerializer"
         props["value.serializer"] = "org.apache.kafka.common.serialization.StringSerializer"
         val producer: KafkaProducer<String, String> = KafkaProducer<String, String>(props)
 
-        val newGatewayKeyTopic = SystemGatewayKeyTopic("id", "gateway-01-keys-topic", "gateway-01-clients-topic")
+        val newGatewayKeyTopic = SystemGatewayKeyTopic("id1", "gateway-01-keys-topic", "gateway-01-clients-topic")
         val newGatewayKeyTopicJson: String = mapper.writeValueAsString(newGatewayKeyTopic)
         utils.printRed("TEST newGatewayKeyTopicJson as string: \n $newGatewayKeyTopicJson")
 
@@ -69,8 +73,29 @@ class RRTesting(
         producer.send(ProducerRecord(inputTopicA, "0", "testvalue 3"))
         producer.send(ProducerRecord(inputTopicA, "0", "testvalue 4"))
 
+        Thread.sleep(6000)
 
+        val newGatewayKeyTopic2 = SystemGatewayKeyTopic("id2", "gateway-02-keys-topic", "gateway-02-clients-topic")
+        val newGatewayKeyTopicJson2: String = mapper.writeValueAsString(newGatewayKeyTopic2)
+        producer.send(ProducerRecord(systemTopic, "new-gateway-key-topic", newGatewayKeyTopicJson2))
 
+        Thread.sleep(1000)
+
+        producer.send(ProducerRecord(newGatewayKeyTopic2.keysTopicName, inputTopicA, mapper.writeValueAsString(listOf("1", "2"))))
+        producer.send(ProducerRecord(newGatewayKeyTopic2.keysTopicName, inputTopicB, mapper.writeValueAsString(listOf("5", "6"))))
+
+        Thread.sleep(2000)
+
+        producer.send(ProducerRecord(inputTopicA, "0", "testvalue 10"))
+        producer.send(ProducerRecord(inputTopicA, "0", "testvalue 11"))
+        producer.send(ProducerRecord(inputTopicA, "1", "testvalue 12"))
+        producer.send(ProducerRecord(inputTopicA, "1", "testvalue 13"))
+        producer.send(ProducerRecord(inputTopicA, "2", "testvalue 14"))
+
+        producer.send(ProducerRecord(inputTopicB, "1", "no 13"))
+        producer.send(ProducerRecord(inputTopicB, "2", "no 14"))
+        producer.send(ProducerRecord(inputTopicB, "5", "yes 13"))
+        producer.send(ProducerRecord(inputTopicB, "6", "yes 14"))
 
     }
 
