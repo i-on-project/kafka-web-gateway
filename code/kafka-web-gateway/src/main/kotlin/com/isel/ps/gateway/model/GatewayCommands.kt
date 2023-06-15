@@ -28,8 +28,8 @@ data class ClientMessage(
     constructor() : this("", Command(""))
 }
 
-data class Subscribe(val topics: List<TopicType>, val startConsuming: Boolean = false) : Command("subscribe") {
-    constructor() : this(emptyList(), false)
+data class Subscribe(val topics: List<TopicType>) : Command("subscribe") { // val startConsuming: Boolean = false
+    constructor() : this(emptyList())
 }
 
 data class Consume(val maxQuantity: Int?, val scale: String?) : Command("consume") {
@@ -43,6 +43,17 @@ data class Publish(val topic: String, val key: String?, val value: String) : Com
 data class Pause(val topics: List<TopicType>) : Command("pause")
 
 data class Resume(val topics: List<TopicType>) : Command("resume")
+
+data class Message(
+    val topic: String,
+    val partition: Int,
+    val key: String?,
+    val value: String,
+    val timestamp: Long,
+    val offset: Long
+) : Command("message") {
+    constructor() : this("", 0, null, "", 0, 0)
+}
 
 class Ack : Command("ack")
 
@@ -75,7 +86,8 @@ class TopicTypeDeserializer : JsonDeserializer<TopicType>() {
     override fun deserialize(p: JsonParser?, ctxt: DeserializationContext?): TopicType {
         val node = p?.codec?.readTree<JsonNode>(p)
         val topic = node?.get("topic")?.asText()
-        val key = node?.get("key")?.asText()
+        val keyNode = node?.get("key")
+        val key = if (keyNode?.isNull == true) null else keyNode?.asText()
 
         return TopicType(topic!!, key)
     }

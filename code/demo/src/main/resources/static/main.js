@@ -1,8 +1,9 @@
-// Initialize the WebSocketPubSub instance
+// Initialize the GatewayClient instance
 class GatewayClient {
     #url;
     #socket;
-    #subscriptions;
+    #fullTopicsSubscriptions;
+    #keysSubscriptions;
     #onOpenCallback;
     #onCloseCallback;
     #active;
@@ -10,7 +11,8 @@ class GatewayClient {
     constructor(url) {
         this.#url = url;
         this.#socket = null;
-        this.#subscriptions = new Map();
+        this.#fullTopicsSubscriptions = new Map();
+        this.#keysSubscriptions = new Map();
         this.#onOpenCallback = null;
         this.#onCloseCallback = null;
     }
@@ -46,7 +48,8 @@ class GatewayClient {
         if (this.#socket) {
             this.#socket.close();
             this.#socket = null;
-            this.#subscriptions.clear();
+            this.#keysSubscriptions.clear();
+            this.#fullTopicsSubscriptions.clear()
             console.log('WebSocket connection disconnected.');
         }
     }
@@ -60,16 +63,41 @@ class GatewayClient {
     }
 
     subscribe(topic, key, callback) {
-        const subscriptionKey = this.#getSubscriptionKey(topic, key);
-        if (!this.#subscriptions.has(subscriptionKey)) {
-            this.#subscriptions.set(subscriptionKey, {
-                topic,
-                key,
-                callback,
-                lastMessageId: null,
-                ackSent: false,
-            });
+        if (key == null) {
+            if (!this.#fullTopicsSubscriptions.has(topic)) {
+                this.#fullTopicsSubscriptions.set(topic, {
+                    topic,
+                    key: null,
+                    callback,
+                    lastMessageId: null,
+                    ackSent: false,
+                });
+            }
+        } else {
+            const subscriptionKey = this.#getSubscriptionKey(topic, key);
+
+            if (!this.#keysSubscriptions.has(topic)) {
+                this.#keysSubscriptions.set(subscriptionKey, {
+                    topic,
+                    key: null,
+                    callback,
+                    lastMessageId: null,
+                    ackSent: false,
+                });
+            }
         }
+
+        // Send the subscribe command to the server
+        const payload = {
+            command: {
+                type: 'subscribe',
+                topics: [{
+                    topic: topic,
+                    key: key
+                }]
+            }
+        };
+        this.#send(payload);
     }
 
     publish(topic, key, message) {
@@ -86,12 +114,20 @@ class GatewayClient {
 
     #handleMessage(message) {
         if (message.command.type === 'ack') {
-            console.debug(`Ack received for ${message.messageId}`)
+            console.info(`Ack received for ${message.messageId}`)
         } else if (message.command.type === 'message') {
+            console.info(`Not ack received ${message}`)
             const topic = message.command.topic;
             const key = message.command.key;
-            const subscriptionKey = this.#getSubscriptionKey(topic, key);
-            const subscription = this.#subscriptions.get(subscriptionKey);
+
+            let subscription;
+            if (this.#fullTopicsSubscriptions.has(topic)) {
+                subscription = this.#fullTopicsSubscriptions.get(topic)
+            } else {
+                const subscriptionKey = this.#getSubscriptionKey(topic, key);
+                subscription = this.#keysSubscriptions.get(subscriptionKey);
+            }
+
             if (subscription && message.messageId !== subscription.lastMessageId) {
                 subscription.callback(message);
                 subscription.lastMessageId = message.messageId;
@@ -105,6 +141,8 @@ class GatewayClient {
     #send(payload) {
         if (this.#socket && this.#socket.readyState === WebSocket.OPEN) {
             const message = JSON.stringify(payload);
+            console.log('Send with ')
+            console.log(payload)
             this.#socket.send(message);
         }
     }
@@ -122,6 +160,9 @@ class GatewayClient {
     #getSubscriptionKey(topic, key) {
         return `${topic}-${key}`;
     }
+
+    // Criar subscrição com topic = "a" e key = null
+    // Obter subscrição, com topic = "a" e key = (chave do recorde(!= null))
 }
 
 const pubSub = new GatewayClient('ws://localhost:8080/socket');
@@ -135,7 +176,9 @@ const topicList = document.getElementById('topic-list');
 const messageContainer = document.getElementById('message-container');
 const messageInput = document.getElementById('message-input');
 const sendButton = document.getElementById('send-button');
+const roomList = document.getElementById('room-list');
 
+let clientId
 // Event listener for login button click
 loginButton.addEventListener('click', () => {
     const username = usernameInput.value.trim();
@@ -146,6 +189,7 @@ loginButton.addEventListener('click', () => {
 
         // Connect to the WebSocket server with the username as the token
         pubSub.connect(username);
+        clientId = username
     }
 });
 
@@ -175,34 +219,80 @@ sendButton.addEventListener('click', () => {
 topicList.addEventListener('change', () => {
     const selectedTopic = topicList.value;
     messageContainer.innerHTML = '';
-    pubSub.subscribe(selectedTopic, null, handleMessage);
+
+    // Subscribe to the selected topic
+    pubSub.subscribe(selectedTopic, null, (message) => {
+        console.log("message:");
+        console.log(message);
+        if (message.command.type === 'ack') {
+            // Acknowledgement received
+            console.log(`ACK CALLBACK`);
+            displaySubscribedRoom(selectedTopic);
+
+        } else if (message.command.type === 'err') {
+            console.log(`ERR CALLBACK`);
+            alert(`Failed to subscribe: ${message.command.error}`);
+        } else if (message.command.type === 'message') {
+            console.log(`MESSAGE CALLBACK`);
+            // Handle regular message
+            handleMessage(message);
+        } else {
+            console.log(`Unknown message received ${message}`)
+        }
+    });
 });
 
-// Function to update the list of topics based on user subscriptions
-const updateTopicList = (rooms) => {
-    topicList.innerHTML = '';
+// Function to update the list of rooms
+const updateRoomList = (rooms) => {
+    roomList.innerHTML = '';
 
     rooms.forEach((room) => {
+        const roomElement = document.createElement('div');
+        roomElement.value = room.name;
+        roomElement.textContent = room.name + ' (Allowed: ' + room.allowed.join(', ') + ')';
+        // Add click event listener to request permissions for the room
+        roomElement.addEventListener('click', () => {
+            requestPermissions(room.name);
+        });
+
+        roomList.appendChild(roomElement);
+    });
+};
+
+// Function to update the list of topics based on user subscriptions
+const updateTopicList = (topics) => {
+    // Clear the topic list
+    topicList.innerHTML = '';
+
+    // Create an option for each topic and add it to the topic list
+    topics.forEach((topic) => {
         const optionElement = document.createElement('option');
-        optionElement.value = room.name;
-        optionElement.textContent = room.name + ' (Allowed: ' + room.allowed.join(', ') + ')';
+        optionElement.value = topic.name;
+        optionElement.textContent = topic.name;
         topicList.appendChild(optionElement);
     });
 
+    // Trigger the change event to subscribe to the first topic in the list
     topicList.dispatchEvent(new Event('change'));
 };
 
 // Callback function to handle user subscriptions
-const handleSubscriptions = (subscriptions) => {
-    // Update the list of topics based on user subscriptions
-    updateTopicList(subscriptions);
+const handleAvailableRooms = (rooms) => {
+    updateRoomList(rooms);
+    updateTopicList(rooms);
+};
+
+// Display the currently subscribed room
+const displaySubscribedRoom = (room) => {
+    const roomElement = document.getElementById('subscribed-room');
+    roomElement.textContent = `Subscribed to: ${room}`;
 };
 
 async function fetchRooms() {
     try {
         const response = await fetch('http://localhost:8089/rooms');
         const data = await response.json();
-        updateTopicList(data);
+        handleAvailableRooms(data);
     } catch (error) {
         console.error('Error:', error);
     }
@@ -213,11 +303,30 @@ let fetchInterval;
 // Callback function to handle the WebSocket connection status
 const onOpen = () => {
     // Connection is established, fetch rooms
-    fetchInterval = setInterval(fetchRooms, 5000);
+    // fetchInterval = setInterval(fetchRooms, 1500000);
 };
+
+// Function to request permissions for a room
+async function requestPermissions(roomName) {
+    try {
+        const response = await fetch(`http://localhost:8089/room/${roomName}/${clientId}`);
+
+        if (response.ok) {
+            console.log(`Permissions requested for room: ${roomName}`);
+        } else {
+            console.error(`Failed to request permissions for room: ${roomName}`);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
+setTimeout(fetchRooms, 5000)
+
 
 const onClose = () => {
     // Connection is closed, clear the topic list and message container
+    updateRoomList([]);
     updateTopicList([]);
     messageContainer.innerHTML = '';
     clearInterval(fetchInterval);

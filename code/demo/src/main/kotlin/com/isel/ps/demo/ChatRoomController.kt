@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.http.*
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.client.RestTemplate
 
@@ -42,14 +41,15 @@ class ChatRoomController {
         return ResponseEntity.ok(rooms)
     }
 
-    @PostMapping("/room/{room}/{client}")
-    fun givePermissionTo(@PathVariable room: String, @PathVariable client: String): Any {
+    @GetMapping("/room/{room}/{client}")
+    fun givePermissionTo(@PathVariable room: String, @PathVariable client: String): ResponseEntity<*> {
 
         val permission = createPermission(room)
 
         if (permission == null) {
             println("Unable to create permission.")
-            return ResponseEntity.badRequest()
+            return ResponseEntity.badRequest().body(Unit)
+
         }
 
         return if (assignToClient(client, permission)) {
@@ -57,9 +57,9 @@ class ChatRoomController {
                 it.name == room
             }?.allowed?.add(client)
 
-            ResponseEntity.ok()
+            ResponseEntity.ok(Unit)
         } else {
-            ResponseEntity.badRequest()
+            ResponseEntity.badRequest().body(Unit)
         }
     }
 

@@ -2,10 +2,13 @@ package com.isel.ps.gateway.kafka
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.isel.ps.gateway.config.GatewayConfig
+import com.isel.ps.gateway.model.ClientMessage
+import com.isel.ps.gateway.model.Message
 import com.isel.ps.gateway.model.Subscription
 import com.isel.ps.gateway.utils.*
 import com.isel.ps.gateway.websocket.ClientAuthenticationInterceptor
 import com.isel.ps.gateway.websocket.ClientSession
+import com.isel.ps.gateway.websocket.GatewayWebsocketHandler.Companion.json
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
@@ -14,7 +17,6 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
-import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketMessage
 import org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorator
 import java.time.Duration
@@ -30,12 +32,18 @@ class RecordDealer(
 ) {
     // TODO: Think about multiple consumers (probably same group id) per gateway
     private val consumer: KafkaConsumer<String, String>
+
     // Holds subscriptions that are limited by keys. Pair of topic-key as hashmap key.
-    private val keys: ConcurrentHashMap<Pair<String, String>, List<ClientSession>> = ConcurrentHashMap<Pair<String, String>, List<ClientSession>>()
+    private val keys: ConcurrentHashMap<Pair<String, String>, List<ClientSession>> =
+        ConcurrentHashMap<Pair<String, String>, List<ClientSession>>()
+
     // Holds subscriptions that are NOT limited by keys.
-    private val fullTopics: ConcurrentHashMap<String, List<ClientSession>> = ConcurrentHashMap<String, List<ClientSession>>()
-    private final val consumerExecutor: ExecutorService = Executors.newSingleThreadExecutor() //TODO: temporary way to use particular thread
-    private final val messageExecutor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor() //TODO: temporary way to use particular thread
+    private val fullTopics: ConcurrentHashMap<String, List<ClientSession>> =
+        ConcurrentHashMap<String, List<ClientSession>>()
+    private final val consumerExecutor: ExecutorService =
+        Executors.newSingleThreadExecutor() //TODO: temporary way to use particular thread
+    private final val messageExecutor: ScheduledExecutorService =
+        Executors.newSingleThreadScheduledExecutor() //TODO: temporary way to use particular thread
 
     // TODO: Debate this value
     private var consumerPollMillis: Long = 200L
@@ -46,11 +54,12 @@ class RecordDealer(
 
     init {
         val gatewayInstance = gatewayConfig.getGateway()
-        consumer = KafkaConsumer(kafkaClientsUtils.getConsumerDefaultProperties(gatewayIdLongToConsumerIdString(gatewayInstance.gatewayId)))
+        consumer =
+            KafkaConsumer(kafkaClientsUtils.getConsumerDefaultProperties(gatewayIdLongToConsumerIdString(gatewayInstance.gatewayId)))
         consumer.subscribe(listOf(gatewayInstance.topicClients))
         consumerExecutor.submit {
             // TODO: consider using consumer.wakeup and/or global boolean maybe
-            while (true){
+            while (true) {
                 val records: ConsumerRecords<String, String>? = consumer.poll(Duration.ofMillis(consumerPollMillis))
                 records?.forEach { record ->
                     dispatch(record)
@@ -60,7 +69,7 @@ class RecordDealer(
 
     }
 
-    private final fun gatewayIdLongToConsumerIdString(gatewayId: Long): String{
+    private final fun gatewayIdLongToConsumerIdString(gatewayId: Long): String {
         return "gateway-${gatewayId}"
     }
 
@@ -70,15 +79,35 @@ class RecordDealer(
      */
     private fun dispatch(record: ConsumerRecord<String, String>) {
         val clients: MutableList<ClientSession> = mutableListOf()
-        clients.addAll(keys[Pair(record.topic(), record.key())] as List<ClientSession>)
-        clients.addAll(fullTopics[record.topic()] as List<ClientSession>)
 
-        logger.debug("RecordDealer dispatch() clients found -> [${clients.size}]")
+        val originalTopic = getOriginalTopic(record)
+
+        keys[Pair(originalTopic, record.key())]?.let { clients.addAll(it.toList()) }
+        fullTopics[originalTopic]?.let { clients.addAll(it.toList()) }
+
+        logger.info("RecordDealer dispatch() clients found -> [${clients.size}]")
 
         clients.forEach { clientSession ->
-            clientSession.session.sendMessage(TextMessage(record.value()), 3)
+            clientSession.session.sendMessage(
+                json(
+                    ClientMessage(
+                        UUID.randomUUID().toString(),
+                        Message(
+                            originalTopic,
+                            record.partition(),
+                            record.key(),
+                            record.value(),
+                            record.timestamp(),
+                            record.offset()
+                        )
+                    )
+                ), 3
+            )
         }
     }
+
+    private fun getOriginalTopic(record: ConsumerRecord<String, String>) =
+        String(record.headers().lastHeader("original_topic").value())
 
     fun addSubscription(clientSession: ClientSession, subscription: Subscription): AddSubscriptionResult {
         return when (val res = addSubscriptionToLocalMaps(clientSession, subscription)) {
@@ -90,10 +119,12 @@ class RecordDealer(
 
                 else -> Result.Error(AddSubscriptionError.Unknown)
             }
+
             else -> Result.Error(AddSubscriptionError.Unknown)
         }
 
     }
+
     private fun updateRequestedKeysTopic(topic: String) {
         val record = ProducerRecord(
             "gateway-${gatewayConfig.getGateway().gatewayId}-keys",
@@ -107,7 +138,10 @@ class RecordDealer(
         return keys.keys().toList().filter { it.first == topic }.map { it.second }
     }
 
-    private fun addSubscriptionToLocalMaps(clientSession: ClientSession, subscription: Subscription): AddSubscriptionResult {
+    private fun addSubscriptionToLocalMaps(
+        clientSession: ClientSession,
+        subscription: Subscription
+    ): AddSubscriptionResult {
 
         // If subscription topic key is null
         if (subscription.key == null) {
