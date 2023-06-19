@@ -28,7 +28,7 @@ services:
       POSTGRES-PWD: "gateway_password"
       OWNER-NAME: "owner"
       OWNER-TOKEN: "348fd1e9-d401-4f4a-b4ab-917297d522c7"
-      AUTH-SERVER-URI: "http://localhost:8089/authenticate"
+      AUTH-SERVER-URI: "http://host.docker.internal:8089/authenticate"
     ports:
       - "8081:8081"
     depends_on:
@@ -51,7 +51,7 @@ services:
       POSTGRES-PWD: "gateway_password"
       OWNER-NAME: "owner"
       OWNER-TOKEN: "348fd1e9-d401-4f4a-b4ab-917297d522c7"
-      AUTH-SERVER-URI: "http://localhost:8089/authenticate"
+      AUTH-SERVER-URI: "http://host.docker.internal:8089/authenticate"
     ports:
       - "8082:8082"
     depends_on:

@@ -38,15 +38,15 @@ class ClientAuthenticationInterceptor(private val settingRepository: SettingRepo
             return false
         }
 
-        val authEndpoint = settingRepository.getBySettingName(SettingType.AuthServer.settingName)?.name
+        // TODO: Use cache to prevent several DB queries
+        val authEndpoint = settingRepository.getBySettingName(SettingType.AuthServer.settingName)
 
-        if (authEndpoint == null) {
+        if (authEndpoint?.name == null) {
             logger.warn("Authentication Server not configured, unable to authenticate clients.")
             return false
         }
 
-        val authenticationProvider =
-            HttpAuthenticationProvider(settingRepository.getBySettingName(SettingType.AuthServer.settingName)!!.value)
+        val authenticationProvider = HttpAuthenticationProvider(authEndpoint.value)
         val client = authenticationProvider.validateToken(authorizationToken)
 
         if (client == null) {

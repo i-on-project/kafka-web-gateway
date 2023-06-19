@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.client.RestTemplate
+import java.util.*
 
 data class Permission(
     var permissionId: Int?,
@@ -25,16 +26,20 @@ data class ClientPermission(
 }
 
 data class Room(
-    val name: String,
+    val id: String,
+    val title: String,
     val allowed: MutableList<String>
 ) {
-    constructor() : this("", mutableListOf())
+    constructor() : this("", "", mutableListOf())
 }
 
 @RestController
 class ChatRoomController {
 
-    val rooms: List<Room> = mutableListOf(Room("geral", mutableListOf()), Room("privado", mutableListOf()))
+    val rooms: List<Room> = mutableListOf(
+        Room("8d818415-7f23-45f3-b909-541aae83a15f", "geral", mutableListOf()),
+        Room("154e0098-ebe4-4dd7-bce2-f2168eb3972e", "privado", mutableListOf())
+    )
 
     @GetMapping("/rooms")
     fun availableRooms(): ResponseEntity<List<Room>> {
@@ -54,7 +59,7 @@ class ChatRoomController {
 
         return if (assignToClient(client, permission)) {
             rooms.find {
-                it.name == room
+                it.title == room
             }?.allowed?.add(client)
 
             ResponseEntity.ok(Unit)

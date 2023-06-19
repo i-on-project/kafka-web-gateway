@@ -9,8 +9,8 @@ import java.util.*
 
 @Configuration
 class KafkaConfig(
-        @Value("\${spring.kafka.bootstrap-servers}")
-        private val bootstrapServers: String
+    @Value("\${spring.kafka.bootstrap-servers}")
+    private val bootstrapServers: String
 ) {
 
     @Bean
@@ -21,6 +21,7 @@ class KafkaConfig(
         props["value.serializer"] = "org.apache.kafka.common.serialization.StringSerializer"
         return KafkaProducer(props)
     }
+
     @Bean
     fun kafkaProducerLongKey(): KafkaProducer<Long, String> {
         val props = Properties()

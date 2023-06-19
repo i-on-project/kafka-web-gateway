@@ -55,7 +55,9 @@ data class Message(
     constructor() : this("", 0, null, "", 0, 0)
 }
 
-class Ack : Command("ack")
+class Ack(val topic: String?, val key: String?) : Command("ack") {
+    constructor() : this(null, null)
+}
 
 data class Err(val message: String?) : Command("error")
 

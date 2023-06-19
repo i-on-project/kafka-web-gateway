@@ -4,9 +4,9 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.isel.ps.gateway.config.GatewayConfig
 import com.isel.ps.gateway.model.ClientMessage
 import com.isel.ps.gateway.model.Message
+import com.isel.ps.gateway.model.MessageStatus
 import com.isel.ps.gateway.model.Subscription
 import com.isel.ps.gateway.utils.*
-import com.isel.ps.gateway.websocket.ClientAuthenticationInterceptor
 import com.isel.ps.gateway.websocket.ClientSession
 import com.isel.ps.gateway.websocket.GatewayWebsocketHandler.Companion.json
 import org.apache.kafka.clients.consumer.ConsumerRecord
@@ -17,18 +17,20 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
-import org.springframework.web.socket.WebSocketMessage
-import org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorator
 import java.time.Duration
 import java.util.*
-import java.util.concurrent.*
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
 
 // TODO: Rule: Client interactions with this class only on at a time per client.
 @Component
 class RecordDealer(
     private val kafkaClientsUtils: KafkaClientsUtils,
     private val gatewayConfig: GatewayConfig,
-    private val producer: KafkaProducer<String, String>
+    private val producer: KafkaProducer<String, String>,
+    private val messageStatus: MessageStatus
 ) {
     // TODO: Think about multiple consumers (probably same group id) per gateway
     private val consumer: KafkaConsumer<String, String>
@@ -46,9 +48,8 @@ class RecordDealer(
         Executors.newSingleThreadScheduledExecutor() //TODO: temporary way to use particular thread
 
     // TODO: Debate this value
-    private var consumerPollMillis: Long = 200L
+    private var consumerPollMillis: Long = 10000L
     private val mapper = jacksonObjectMapper()
-    private val messageStatuses: ConcurrentMap<String, ConcurrentMap<String, Boolean>> = ConcurrentHashMap()
 
     private val logger: Logger = LoggerFactory.getLogger(RecordDealer::class.java)
 
@@ -88,10 +89,13 @@ class RecordDealer(
         logger.info("RecordDealer dispatch() clients found -> [${clients.size}]")
 
         clients.forEach { clientSession ->
+            val messageId = UUID.randomUUID().toString()
+
             clientSession.session.sendMessage(
+                messageId,
                 json(
                     ClientMessage(
-                        UUID.randomUUID().toString(),
+                        messageId,
                         Message(
                             originalTopic,
                             record.partition(),
@@ -101,7 +105,10 @@ class RecordDealer(
                             record.offset()
                         )
                     )
-                ), 3
+                ),
+                messageStatus.getMessageStatuses(),
+                messageExecutor,
+                3
             )
         }
     }
@@ -159,34 +166,4 @@ class RecordDealer(
     fun removeSubscription() {
 
     }
-
-    fun ConcurrentWebSocketSessionDecorator.sendMessage(textMessage: WebSocketMessage<*>, retries: Int = 3) {
-        val session = this
-        val userId = session.attributes[ClientAuthenticationInterceptor.CLIENT_ID] as String
-
-        val messageId = UUID.randomUUID().toString()
-
-        // Create a nested map for each user if it doesn't exist
-        messageStatuses.putIfAbsent(userId, ConcurrentHashMap())
-
-        messageStatuses[userId]!![messageId] = false
-
-        var remainingRetries = retries
-
-        logger.info("userId: $userId")
-        val sendTask = SendTask(
-            messageStatuses,
-            userId,
-            messageId,
-            remainingRetries,
-            session,
-            textMessage,
-            messageExecutor,
-            logger
-        )
-
-        messageExecutor.schedule(sendTask, 10000L, TimeUnit.MILLISECONDS)
-    }
-
-
 }

@@ -7,7 +7,6 @@ import com.isel.ps.gateway.db.ClientRepository
 import com.isel.ps.gateway.db.SubscriptionRepository
 import com.isel.ps.gateway.kafka.RecordDealer
 import com.isel.ps.gateway.model.*
-import com.isel.ps.gateway.utils.SendTask
 import com.isel.ps.gateway.websocket.ClientAuthenticationInterceptor.Companion.CLIENT_ID
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -17,8 +16,9 @@ import org.springframework.stereotype.Component
 import org.springframework.web.socket.*
 import org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorator
 import java.io.IOException
+import java.time.Instant
 import java.util.*
-import java.util.concurrent.*
+import java.util.concurrent.ConcurrentHashMap
 
 @Component
 class GatewayWebsocketHandler(
@@ -26,6 +26,7 @@ class GatewayWebsocketHandler(
     private val sessionsStorage: ClientSessions,
     private val kafkaProducer: KafkaProducer<String, String>,
     private val recordDealer: RecordDealer,
+    private val messageStatus: MessageStatus,
     val clientRepository: ClientRepository
 ) : WebSocketHandler {
 
@@ -38,16 +39,11 @@ class GatewayWebsocketHandler(
         }
 
         fun json(obj: Any) = TextMessage(objectMapper.writeValueAsString(obj))
-
     }
 
     private val pingPongTimers: MutableMap<String, Timer> = ConcurrentHashMap()
     private val logger: Logger = LoggerFactory.getLogger(GatewayWebsocketHandler::class.java)
-    private var executor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
     // val subscriptions: MutableMap<String, List<TopicType>> = mutableMapOf()
-
-
-    private val messageStatuses: ConcurrentMap<String, ConcurrentMap<String, Boolean>> = ConcurrentHashMap()
 
     override fun handleMessage(session: WebSocketSession, message: WebSocketMessage<*>) {
         if (message is PongMessage) {
@@ -58,7 +54,7 @@ class GatewayWebsocketHandler(
         try {
             payload = message.payload as String
         } catch (ex: Exception) {
-            session.sendMessage(json(Err("Invalid payload")))
+            session.sendMessage(json(ClientMessage(null, Err("Invalid payload"))))
             return
         }
 
@@ -66,19 +62,18 @@ class GatewayWebsocketHandler(
         try {
             clientMessage = objectMapper.readValue<ClientMessage>(payload)
         } catch (ex: Exception) {
-            session.sendMessage(json(Err("Unknown message received.")))
+            ex.printStackTrace()
+            session.sendMessage(json(ClientMessage(null, Err("Unknown message received."))))
             return
         }
 
-        clientMessage.messageId = UUID.randomUUID().toString()
         val concurrentSession = ConcurrentWebSocketSessionDecorator(session, 5000, 65536)
-        println("handleMessage: $clientMessage")
 
         when (clientMessage.command) {
             is Subscribe -> {
                 val subscribeCommand = clientMessage.command
                 subscribeCommand.topics.forEach { topic ->
-                    val subscription: Subscription = Subscription(
+                    val subscription = Subscription(
                         (Math.random() * 10000).toInt(),
                         session.id,
                         topic.topic,
@@ -86,15 +81,25 @@ class GatewayWebsocketHandler(
                     ) //TODO: debate how to input the values..
                     recordDealer.addSubscription(sessionsStorage.getClientSession(session.id)!!, subscription)
                 }
+                sendAck(
+                    clientMessage,
+                    concurrentSession,
+                    subscribeCommand.topics[0].topic,
+                    subscribeCommand.topics[0].key
+                )
             }
 
             is Consume -> {
                 val consumeCommand = clientMessage.command
+                /*
                 concurrentSession.sendMessage(
                     UUID.randomUUID().toString(),
                     TextMessage("Please consume this message"),
+                    messageStatus.getMessageStatuses(),
+                    executor,
                     3
                 )
+                 */
             }
 
             is Publish -> { //TODO: Needs filtering/confirmation for sending records to topics
@@ -103,9 +108,9 @@ class GatewayWebsocketHandler(
                 kafkaProducer.send(producerRecord) { _, err ->
                     if (err != null) {
                         concurrentSession.sendMessage(json(Err(err.message)))
+                    } else {
+                        sendAck(clientMessage, concurrentSession, publishCommand.topic, publishCommand.key)
                     }
-
-                    sendAck(clientMessage, concurrentSession)
                 }
             }
 
@@ -120,10 +125,10 @@ class GatewayWebsocketHandler(
             }
 
             is Ack -> {
-                val userMessageStatuses = messageStatuses[getUserIdFromSession(session)]
+                val userMessageStatuses = messageStatus.getMessageStatuses()[getUserIdFromSession(session)]
 
                 if (userMessageStatuses != null) {
-                    userMessageStatuses[clientMessage.messageId] = true
+                    userMessageStatuses[clientMessage.messageId] = MessageInfo(Instant.now(), true)
                     logger.info("[${clientMessage.messageId}] message acked")
                 }
             }
@@ -163,7 +168,8 @@ class GatewayWebsocketHandler(
         sessionsStorage.removeSession(session.id)
 
         // Remove the message statuses for the specific user
-        messageStatuses.remove(userId)
+        messageStatus.getMessageStatuses().remove(userId)
+
         logger.info("Closed connection from {}.", userId)
     }
 
@@ -177,38 +183,8 @@ class GatewayWebsocketHandler(
         return session.attributes[CLIENT_ID] as String
     }
 
-    private fun sendAck(clientMessage: ClientMessage, session: WebSocketSession) {
-        session.sendMessage(json(ClientMessage(clientMessage.messageId, Ack())))
-    }
-
-    fun ConcurrentWebSocketSessionDecorator.sendMessage(
-        messageId: String,
-        textMessage: WebSocketMessage<*>,
-        retries: Int = 3
-    ) {
-        val session = this
-        val userId = getUserIdFromSession(this)
-
-        // Create a nested map for each user if it doesn't exist
-        messageStatuses.putIfAbsent(userId, ConcurrentHashMap())
-
-        messageStatuses[userId]!![messageId] = false
-
-        var remainingRetries = retries
-
-        logger.info("userId: $userId")
-        val sendTask = SendTask(
-            messageStatuses,
-            userId,
-            messageId,
-            remainingRetries,
-            session,
-            textMessage,
-            executor,
-            logger
-        )
-
-        executor.schedule(sendTask, 10000L, TimeUnit.MILLISECONDS)
+    private fun sendAck(clientMessage: ClientMessage, session: WebSocketSession, topic: String, key: String?) {
+        session.sendMessage(json(ClientMessage(clientMessage.messageId, Ack(topic, key))))
     }
 
     private fun schedulePingMessages(session: WebSocketSession, timer: Timer) {

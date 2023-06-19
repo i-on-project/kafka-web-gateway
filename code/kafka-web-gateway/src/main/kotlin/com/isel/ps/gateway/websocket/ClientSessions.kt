@@ -12,11 +12,11 @@ data class ClientSession(
 @Component
 class ClientSessions {
 
+    // TODO: Why in companion object?
     companion object {
         // Never edit values of map
         private val sessions: ConcurrentHashMap<String, ClientSession> = ConcurrentHashMap()
     }
-
 
     fun addSession(session: ConcurrentWebSocketSessionDecorator) {
         val clientSession = ClientSession(session.id, session)

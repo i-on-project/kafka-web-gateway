@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+input {
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+@layer components {
+    .btn {
+        @apply px-5 pt-1 h-10 text-lg font-bold text-white rounded-full bg-primary hover:bg-secondary;
+    }
+}
