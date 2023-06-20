@@ -15,6 +15,7 @@ import org.apache.kafka.streams.StoreQueryParameters
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.kstream.Consumed
 import org.apache.kafka.streams.kstream.GlobalKTable
+import org.apache.kafka.streams.kstream.KGroupedTable
 import org.apache.kafka.streams.kstream.KStream
 import org.apache.kafka.streams.kstream.Materialized
 import org.apache.kafka.streams.state.KeyValueStore
@@ -37,6 +38,7 @@ class GlobalKTables (
     fun globalTable() {
 
         val builder = StreamsBuilder()
+
 
 
         // Create a global table for gateways topics keys. The data from this global table

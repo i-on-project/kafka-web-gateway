@@ -55,7 +55,7 @@ class RRTesting(
         props["value.serializer"] = "org.apache.kafka.common.serialization.StringSerializer"
         val producer: KafkaProducer<String, String> = KafkaProducer<String, String>(props)
 
-        val newGatewayKeyTopic = SystemGatewayKeyTopic("id1", "gateway-01-keys-topic", "gateway-01-clients-topic")
+        val newGatewayKeyTopic = SystemGatewayKeyTopic("id1", "gateway-01-keys-topic", "gateway-01-clients-topic", "")
         val newGatewayKeyTopicJson: String = mapper.writeValueAsString(newGatewayKeyTopic)
         utils.printRed("TEST newGatewayKeyTopicJson as string: \n $newGatewayKeyTopicJson")
 
@@ -75,7 +75,7 @@ class RRTesting(
 
         Thread.sleep(6000)
 
-        val newGatewayKeyTopic2 = SystemGatewayKeyTopic("id2", "gateway-02-keys-topic", "gateway-02-clients-topic")
+        val newGatewayKeyTopic2 = SystemGatewayKeyTopic("id2", "gateway-02-keys-topic", "gateway-02-clients-topic", "")
         val newGatewayKeyTopicJson2: String = mapper.writeValueAsString(newGatewayKeyTopic2)
         producer.send(ProducerRecord(systemTopic, "new-gateway-key-topic", newGatewayKeyTopicJson2))
 
@@ -148,5 +148,26 @@ class RRTesting(
         props[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = StringDeserializer::class.java.name
         props[ConsumerConfig.GROUP_ID_CONFIG] = groupId
         return props
+    }
+
+    fun testInitializer() {
+        val systemTopic: String = "SYSTEM_TOPIC"
+        val inputTopicA: String = "input-topic-a"
+        val inputTopicB: String = "input-topic-b"
+
+        deleteTopic(systemTopic)
+        deleteTopic(inputTopicA)
+        deleteTopic(inputTopicB)
+        deleteTopic("gateway-01-clients-topic")
+        deleteTopic("gateway-01-keys-topic")
+        deleteTopic("gateway-02-clients-topic")
+        deleteTopic("gateway-02-keys-topic")
+        createTopic(systemTopic,3,3)
+        createTopic(inputTopicA,3,3)
+        createTopic(inputTopicB,3,3)
+        createTopic("gateway-01-clients-topic",3,3)
+        createTopic("gateway-01-keys-topic",3,3)
+        createTopic("gateway-02-clients-topic",3,3)
+        createTopic("gateway-02-keys-topic",3,3)
     }
 }

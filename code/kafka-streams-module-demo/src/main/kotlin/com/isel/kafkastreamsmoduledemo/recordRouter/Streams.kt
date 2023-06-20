@@ -3,6 +3,7 @@ package com.isel.kafkastreamsmoduledemo.recordRouter
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import org.apache.kafka.clients.consumer.KafkaConsumer
+import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.WakeupException
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.KafkaStreams
@@ -14,6 +15,7 @@ import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import kotlin.concurrent.thread
 
 @Component
 class Streams(
@@ -40,26 +42,33 @@ class Streams(
 
     init {
 
-        val systemTopic: String = "SYSTEM_TOPIC"
-        val inputTopicA: String = "input-topic-a"
-        val inputTopicB: String = "input-topic-b"
+        rrTesting.testInitializer()
 
-        rrTesting.deleteTopic(systemTopic)
-        rrTesting.deleteTopic(inputTopicA)
-        rrTesting.deleteTopic(inputTopicB)
-        rrTesting.deleteTopic("gateway-01-clients-topic")
-        rrTesting.deleteTopic("gateway-01-keys-topic")
-        rrTesting.deleteTopic("gateway-02-clients-topic")
-        rrTesting.deleteTopic("gateway-02-keys-topic")
-        rrTesting.createTopic(systemTopic,3,3)
-        rrTesting.createTopic(inputTopicA,3,3)
-        rrTesting.createTopic(inputTopicB,3,3)
-        rrTesting.createTopic("gateway-01-clients-topic",3,3)
-        rrTesting.createTopic("gateway-01-keys-topic",3,3)
-        rrTesting.createTopic("gateway-02-clients-topic",3,3)
-        rrTesting.createTopic("gateway-02-keys-topic",3,3)
-
+        stateShower()
         listenSystemTopic()
+    }
+
+    final fun stateShower() {
+        thread {
+            while (true){
+                recordRouterUtils.printGreen("********** gatewaysTopicKeys **********")
+                for (entry in gatewaysTopicKeys) {
+                    recordRouterUtils.printGreen("topic[${entry.key.first}] key[${entry.key.second}] gateway-client-topic: ${entry.value.toString()}")
+                }
+                println("-------------------------")
+                println()
+
+                recordRouterUtils.printGreen("********** gatewaysDetails **********")
+                for (entry in gatewaysDetails) {
+                    recordRouterUtils.printGreen("gateway[${entry.key}] gatewayId[${entry.value.gatewayId}]")
+                }
+                println("-------------------------")
+                println()
+
+                Thread.sleep(1000)
+            }
+        }
+
     }
 
 
@@ -81,7 +90,7 @@ class Streams(
                                 recordRouterUtils.printRed("listenSystemTopic: new-gateway-key-topic:\n ${record.value()}")
                                 val systemGatewayKeyTopic: SystemGatewayKeyTopic =
                                     mapper.readValue<SystemGatewayKeyTopic>(record.value())
-                                updateGatewayKeysTopicsSubscriptions(systemGatewayKeyTopic)
+                                    updateGatewayKeysTopicsSubscriptions(systemGatewayKeyTopic)
                                 kClientsStorage.restartAllDefaultRoutingStreams()
                             }
 
@@ -94,6 +103,7 @@ class Streams(
             } catch (ex: Exception) {
                 if (ex.cause is WakeupException) {
                     recordRouterUtils.printRed("listenSystemTopic -> consumer WakeupException.")
+                    consumer.close()
                 }
             }
         }
@@ -112,60 +122,69 @@ class Streams(
     fun runGatewayKeysConsumerPoll(consumer: KafkaConsumer<String, String>) {
         recordRouterUtils.printRed("runGatewayKeysConsumerPoll")
         gatewayKeysTopicConsumerExecutor.submit {
-            while(true) {
-                recordRouterUtils.printRed("runGatewayKeysConsumerPoll before poll")
-                consumer.poll(Duration.ofMillis(5000)).forEach { record ->
-                    recordRouterUtils.printRed("runGatewayKeysConsumerPoll poll ENTRY")
-                    val topic = record.key()
-                    val keys: List<String> = mapper.readValue<List<String>>(record.value())
-                    val newKeys: MutableList<String> = mutableListOf()
-                    val toRemoveKeys: MutableList<String> = mutableListOf()
-                    val gateway: GatewayDetails? = gatewaysDetails.values.find { gatewayDetails ->  gatewayDetails.systemGatewayKeyTopic.keysTopicName == record.topic()}
-                    val clientTopicName: String? = gateway?.systemGatewayKeyTopic?.clientTopicName
-                    if (clientTopicName == null) {
-                        return@forEach
-                    }
-                    var newTopic: Boolean = false
-                    recordRouterUtils.printRed("GatewayKeysConsumerPoll clientTopicName:[${clientTopicName}]")
-                    gatewaysDetails.compute(gateway.gatewayId) { _, gatewayDetails ->
-                        gatewayDetails?.topicsKeys?.compute(topic) { _, gatewayTopicKeys ->
-                            if (gatewayTopicKeys == null) {
-                                newTopic = true
-                            }
-                            val newGatewayTopicKeys = gatewayTopicKeys ?: listOf()
-                            for (key: String in newGatewayTopicKeys) { // TODO: instead of two separate fors, try with only one, or two (one inside the other).
-                                if (!keys.contains(key)) {
-                                    toRemoveKeys.add(key)
+            try {
+                while(true) {
+                    recordRouterUtils.printRed("runGatewayKeysConsumerPoll before poll")
+                    consumer.poll(Duration.ofMillis(5000)).forEach { record ->
+                        recordRouterUtils.printRed("runGatewayKeysConsumerPoll poll ENTRY")
+                        val topic = record.key()
+                        val keys: List<String> = mapper.readValue<List<String>>(record.value())
+                        val newKeys: MutableList<String> = mutableListOf()
+                        val toRemoveKeys: MutableList<String> = mutableListOf()
+                        val gateway: GatewayDetails? =
+                            gatewaysDetails.values.find { gatewayDetails -> gatewayDetails.systemGatewayKeyTopic.keysTopicName == record.topic() }
+                        val clientTopicName: String? = gateway?.systemGatewayKeyTopic?.clientTopicName
+                        if (clientTopicName == null) {
+                            return@forEach
+                        }
+                        var newTopic: Boolean = false
+                        recordRouterUtils.printRed("GatewayKeysConsumerPoll clientTopicName:[${clientTopicName}]")
+                        gatewaysDetails.compute(gateway.gatewayId) { _, gatewayDetails ->
+                            gatewayDetails?.topicsKeys?.compute(topic) { _, gatewayTopicKeys ->
+                                if (gatewayTopicKeys == null) {
+                                    newTopic = true
                                 }
-                            }
-                            for (key: String in keys) {
-                                if (!newGatewayTopicKeys.contains(key)) {
-                                    newKeys.add(key)
+                                val newGatewayTopicKeys = gatewayTopicKeys ?: listOf()
+                                for (key: String in newGatewayTopicKeys) { // TODO: instead of two separate fors, try with only one, or two (one inside the other).
+                                    if (!keys.contains(key)) {
+                                        toRemoveKeys.add(key)
+                                    }
                                 }
+                                for (key: String in keys) {
+                                    if (!newGatewayTopicKeys.contains(key)) {
+                                        newKeys.add(key)
+                                    }
+                                }
+
+                                keys
                             }
+                            gatewayDetails
+                        }
+                        for (key: String in newKeys) {
+                            gatewaysTopicKeys.compute(Pair(topic, key)) { _, gatewayList ->
+                                gatewayList?.plus(clientTopicName)
+                                    ?: listOf(clientTopicName)
+                            }
+                        }
 
-                            keys
+                        for (key: String in toRemoveKeys) {
+                            gatewaysTopicKeys.compute(Pair(topic, key)) { _, gatewayList ->
+                                gatewayList?.minus(clientTopicName) ?: listOf()
+                            }
                         }
-                        gatewayDetails
-                    }
-                    for (key: String in newKeys) {
-                        gatewaysTopicKeys.compute(Pair(topic, key)) { _, gatewayList ->
-                            gatewayList?.plus(clientTopicName)
-                                ?: listOf(clientTopicName)
+                        recordRouterUtils.printRed(
+                            "gatewaysTopicKeys topics+keys: ${
+                                gatewaysTopicKeys.keys().toList().toString()
+                            }"
+                        )
+                        recordRouterUtils.printRed("gatewaysTopicKeys values: ${gatewaysTopicKeys.values}")
+                        if (newTopic) {
+                            createTopicRecordRouterStream(topic, true)
                         }
-                    }
-
-                    for (key: String in toRemoveKeys) {
-                        gatewaysTopicKeys.compute(Pair(topic, key)) { _, gatewayList ->
-                            gatewayList?.minus(clientTopicName) ?: listOf()
-                        }
-                    }
-                    recordRouterUtils.printRed("gatewaysTopicKeys topics+keys: ${gatewaysTopicKeys.keys().toList().toString()}")
-                    recordRouterUtils.printRed("gatewaysTopicKeys values: ${gatewaysTopicKeys.values}")
-                    if (newTopic) {
-                        createTopicRecordRouterStream(topic, true)
                     }
                 }
+            } catch(ex: WakeupException) {
+                recordRouterUtils.printRed("---------- Woke up poll ----------")
             }
         }
     }
@@ -175,11 +194,17 @@ class Streams(
 
         var consumer = kClientsStorage.getGatewayKeysConsumer()
         if (consumer == null) {
+            recordRouterUtils.printRed("updateGatewayKeysTopicsSubscriptions consumer is null")
             consumer = createGatewayKeysConsumer()
             kClientsStorage.setGatewayKeysConsumer(consumer) {createGatewayKeysConsumer()}
         } else {
             recordRouterUtils.printRed("updateGatewayKeysTopicsSubscriptions before wakeup")
-            consumer.wakeup()
+            try {
+                consumer.wakeup()
+            } catch (ex: Exception) {
+                recordRouterUtils.printRed("Exception in wakeup or close with exception: ${ex.message}")
+                throw ex
+            }
             consumer = createGatewayKeysConsumer() // TODO: Temporary
             kClientsStorage.setGatewayKeysConsumer(consumer) {createGatewayKeysConsumer()} // TODO: Temporary
         }

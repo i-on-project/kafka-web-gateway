@@ -15,10 +15,14 @@ class RecordRouterUtils(
     private val bootstrapServers: String
 ) {
     private val RED_TEXT = "\u001B[31m"
+    private val GREEN_TEXT = "\u001B[32m"
     private val RESET_TEXT_COLOR = "\u001B[0m"
 
     fun printRed(message: String) {
         println("${RED_TEXT}${message}${RESET_TEXT_COLOR}")
+    }
+    fun printGreen(message: String) {
+        println("${GREEN_TEXT}${message}${RESET_TEXT_COLOR}")
     }
 
     fun getSystemTopicConsumerProperties(groupId: String): Properties {
