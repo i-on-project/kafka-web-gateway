@@ -163,7 +163,15 @@ class RecordDealer(
         return Result.Success(AddSubscriptionSuccess.Added)
     }
 
-    fun removeSubscription() {
+    fun removeSubscriptionsFromLocalMaps(clientSession: ClientSession) {
+        // Remove the clientSession from subscription lists limited by keys
+        keys.forEach { (topicKey, clientSessions) ->
+            keys[topicKey] = clientSessions.filterNot { it == clientSession }
+        }
 
+        // Remove the clientSession from subscription lists not limited by keys
+        fullTopics.forEach { (topic, clientSessions) ->
+            fullTopics[topic] = clientSessions.filterNot { it == clientSession }
+        }
     }
 }

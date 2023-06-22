@@ -3,10 +3,11 @@ package com.isel.ps.gateway.websocket
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.module.kotlin.readValue
-import com.isel.ps.gateway.db.ClientRepository
 import com.isel.ps.gateway.db.SubscriptionRepository
 import com.isel.ps.gateway.kafka.RecordDealer
 import com.isel.ps.gateway.model.*
+import com.isel.ps.gateway.service.ClientService
+import com.isel.ps.gateway.service.SessionService
 import com.isel.ps.gateway.websocket.ClientAuthenticationInterceptor.Companion.CLIENT_ID
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -27,7 +28,8 @@ class GatewayWebsocketHandler(
     private val kafkaProducer: KafkaProducer<String, String>,
     private val recordDealer: RecordDealer,
     private val messageStatus: MessageStatus,
-    val clientRepository: ClientRepository
+    private val clientService: ClientService,
+    private val sessionService: SessionService
 ) : WebSocketHandler {
 
     companion object {
@@ -54,7 +56,7 @@ class GatewayWebsocketHandler(
         try {
             payload = message.payload as String
         } catch (ex: Exception) {
-            session.sendMessage(json(ClientMessage(null, Err("Invalid payload"))))
+            session.sendMessage(json(ClientMessage(null, Err("Invalid payload."))))
             return
         }
 
@@ -83,9 +85,7 @@ class GatewayWebsocketHandler(
                 }
                 sendAck(
                     clientMessage,
-                    concurrentSession,
-                    subscribeCommand.topics[0].topic,
-                    subscribeCommand.topics[0].key
+                    concurrentSession
                 )
             }
 
@@ -109,7 +109,7 @@ class GatewayWebsocketHandler(
                     if (err != null) {
                         concurrentSession.sendMessage(json(Err(err.message)))
                     } else {
-                        sendAck(clientMessage, concurrentSession, publishCommand.topic, publishCommand.key)
+                        sendAck(clientMessage, concurrentSession)
                     }
                 }
             }
@@ -155,7 +155,7 @@ class GatewayWebsocketHandler(
         schedulePingMessages(session, timer)
 
         val clientId = getUserIdFromSession(session)
-        clientRepository.create(Client(clientId))
+        clientService.createClientIfNotExists(Client(clientId))
         logger.info("New connection from {}.", clientId)
     }
 
@@ -164,9 +164,10 @@ class GatewayWebsocketHandler(
         val timer = pingPongTimers.remove(session.id)
         timer?.cancel()
 
-        val userId: String = getUserIdFromSession(session)
+        recordDealer.removeSubscriptionsFromLocalMaps(sessionsStorage.getClientSession(session.id)!!)
         sessionsStorage.removeSession(session.id)
 
+        val userId: String = getUserIdFromSession(session)
         // Remove the message statuses for the specific user
         messageStatus.getMessageStatuses().remove(userId)
 
@@ -183,8 +184,8 @@ class GatewayWebsocketHandler(
         return session.attributes[CLIENT_ID] as String
     }
 
-    private fun sendAck(clientMessage: ClientMessage, session: WebSocketSession, topic: String, key: String?) {
-        session.sendMessage(json(ClientMessage(clientMessage.messageId, Ack(topic, key))))
+    private fun sendAck(clientMessage: ClientMessage, session: WebSocketSession) {
+        session.sendMessage(json(ClientMessage(clientMessage.messageId, Ack())))
     }
 
     private fun schedulePingMessages(session: WebSocketSession, timer: Timer) {

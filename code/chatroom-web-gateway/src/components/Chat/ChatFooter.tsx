@@ -14,7 +14,7 @@ function ChatFooter({roomId}: { roomId: string }) {
     const handleSendMessage = (e: any, message: string) => {
         e.preventDefault();
         if (message.trim()) {
-            gateway?.publish(roomId, username, message);
+            gateway?.publish(roomId, username, JSON.stringify({type: "message", text: message}), undefined);
         }
         setMessage("");
     };

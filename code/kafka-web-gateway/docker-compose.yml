@@ -36,6 +36,9 @@ services:
       - zookeeper-1
       - zookeeper-2
       - zookeeper-3
+      - kafka-1
+      - kafka-2
+      - kafka-3
 
   spring-service-2:
     container_name: spring-service-2
@@ -59,6 +62,9 @@ services:
       - zookeeper-1
       - zookeeper-2
       - zookeeper-3
+      - kafka-1
+      - kafka-2
+      - kafka-3
 
   zookeeper-1:
     container_name: zookeeper-1

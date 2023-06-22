@@ -5,6 +5,9 @@ import org.springframework.dao.IncorrectResultSizeDataAccessException
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.core.queryForObject
 import org.springframework.stereotype.Repository
+import java.sql.ResultSet
+import java.sql.Timestamp
+import java.time.Instant
 
 @Repository
 class SessionRepository(private val jdbcTemplate: JdbcTemplate) {
@@ -26,18 +29,32 @@ class SessionRepository(private val jdbcTemplate: JdbcTemplate) {
         val sql = "SELECT * FROM session WHERE session_id = ?"
         return try {
             jdbcTemplate.queryForObject(sql, sessionId) { rs, _ ->
-                Session(
-                    sessionId = rs.getString("session_id"),
-                    clientId = rs.getString("client_id"),
-                    gatewayId = rs.getLong("gateway_id"),
-                    createdAt = rs.getTimestamp("created_at"),
-                    updatedAt = rs.getTimestamp("updated_at"),
-                    active = rs.getBoolean("active")
-                )
+                sessionMapper(rs)
             }
         } catch (_: IncorrectResultSizeDataAccessException) {
             return null
         }
+    }
+
+    fun getByClientId(clientId: String): Session? {
+        val sql = "SELECT * FROM session WHERE client_id = ?"
+        return try {
+            jdbcTemplate.queryForObject(sql, clientId) { rs, _ ->
+                sessionMapper(rs)
+            }
+        } catch (_: IncorrectResultSizeDataAccessException) {
+            return null
+        }
+    }
+
+    fun updateActiveSession(active: Boolean, sessionId: String) {
+        val sql = "UPDATE session SET active = ?, updated_at = ? WHERE session_id = ?"
+        jdbcTemplate.update(
+            sql,
+            active,
+            Timestamp.from(Instant.now()),
+            sessionId
+        )
     }
 
     fun delete(sessionId: String) {
@@ -48,14 +65,16 @@ class SessionRepository(private val jdbcTemplate: JdbcTemplate) {
     fun getAll(): List<Session> {
         val sql = "SELECT * FROM session"
         return jdbcTemplate.query(sql) { rs, _ ->
-            Session(
-                sessionId = rs.getString("session_id"),
-                clientId = rs.getString("client_id"),
-                gatewayId = rs.getLong("gateway_id"),
-                createdAt = rs.getTimestamp("created_at"),
-                updatedAt = rs.getTimestamp("updated_at"),
-                active = rs.getBoolean("active")
-            )
+            sessionMapper(rs)
         }
     }
+
+    private fun sessionMapper(rs: ResultSet) = Session(
+        sessionId = rs.getString("session_id"),
+        clientId = rs.getString("client_id"),
+        gatewayId = rs.getLong("gateway_id"),
+        createdAt = rs.getTimestamp("created_at"),
+        updatedAt = rs.getTimestamp("updated_at"),
+        active = rs.getBoolean("active")
+    )
 }

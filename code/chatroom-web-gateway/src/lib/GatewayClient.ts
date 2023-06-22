@@ -14,7 +14,7 @@ export interface IGatewayMessage {
 export interface ISubscription {
     topic: string;
     key: string | undefined;
-    callback: Function | undefined;
+    messageCallback: Function | undefined;
     lastMessageId: string | undefined;
     ackSent: boolean;
 }
@@ -24,7 +24,8 @@ export default class GatewayClient {
     #socket: WebSocket | undefined;
     #fullTopicsSubscriptions: Map<string, ISubscription>;
     #keysSubscriptions: Map<string, ISubscription>;
-    #onOpenCallback: Function | undefined;
+    #operationsCallback: Map<string, { expiresAt: number, operationCallback: Function | undefined }>; // TODO: Implement scheduled task to periodically clean callbacks that might have gotten lost(by comparing timestamps).
+    #onOpenCallback: Function | undefined; // TODO: Also for the operationCallback, maybe implement a setTimeout task that checks if it received a message from the server, otherwise execute callback with "err" message
     #onCloseCallback: Function | undefined;
     #active: boolean;
 
@@ -33,6 +34,7 @@ export default class GatewayClient {
         this.#socket = undefined;
         this.#fullTopicsSubscriptions = new Map();
         this.#keysSubscriptions = new Map();
+        this.#operationsCallback = new Map();
         this.#onOpenCallback = undefined;
         this.#onCloseCallback = undefined;
         this.#active = false;
@@ -50,8 +52,7 @@ export default class GatewayClient {
         };
 
         this.#socket.onmessage = (event) => {
-            const message = JSON.parse(event.data);
-            this.#handleMessage(message);
+            this.#handleMessage(JSON.parse(event.data));
         };
 
         this.#socket.onclose = () => {
@@ -83,33 +84,40 @@ export default class GatewayClient {
         this.#onCloseCallback = callback;
     }
 
-    subscribe(topic: string, key: string | undefined, callback: Function) {
+    subscribe(topic: string, key: string | undefined, messageCallback: Function | undefined, operationCallback: Function | undefined) {
+        const messageId = crypto.randomUUID()
+
+        if (!this.#operationsCallback.has(messageId)) {
+            this.#operationsCallback.set(messageId, {
+                expiresAt: Date.now() + 60_000,
+                operationCallback: operationCallback
+            });
+        }
+
+        const subscriptionKey = this.#getSubscriptionKey(topic, key);
         if (key == null) {
             if (!this.#fullTopicsSubscriptions.has(topic)) {
                 this.#fullTopicsSubscriptions.set(topic, {
                     topic,
                     key: undefined,
-                    callback,
+                    messageCallback: messageCallback,
                     lastMessageId: undefined,
                     ackSent: false,
                 });
             }
-        } else {
-            const subscriptionKey = this.#getSubscriptionKey(topic, key);
-
-            if (!this.#keysSubscriptions.has(topic)) {
-                this.#keysSubscriptions.set(subscriptionKey, {
-                    topic,
-                    key: undefined,
-                    callback,
-                    lastMessageId: undefined,
-                    ackSent: false,
-                });
-            }
+        } else if (!this.#keysSubscriptions.has(subscriptionKey)) {
+            this.#keysSubscriptions.set(subscriptionKey, {
+                topic,
+                key: undefined,
+                messageCallback: messageCallback,
+                lastMessageId: undefined,
+                ackSent: false,
+            });
         }
 
         // Send the subscribe command to the server
         const payload = {
+            messageId,
             command: {
                 type: 'subscribe',
                 topics: [{
@@ -121,8 +129,18 @@ export default class GatewayClient {
         this.#send(payload);
     }
 
-    publish(topic: string, key: string | undefined, message: string) {
+    publish(topic: string, key: string | undefined, message: string, operationCallback: Function | undefined) {
+        const messageId = crypto.randomUUID()
+
+        if (!this.#operationsCallback.has(messageId)) {
+            this.#operationsCallback.set(messageId, {
+                expiresAt: Date.now() + 60_000,
+                operationCallback: operationCallback
+            });
+        }
+
         const payload = {
+            messageId,
             command: {
                 type: 'publish',
                 topic: topic,
@@ -134,30 +152,41 @@ export default class GatewayClient {
     }
 
     #handleMessage(message: IGatewayMessage) {
-        if (message.command.type === 'ack') {
-            console.info(`Ack received for ${message.messageId}`)
-        } else if (message.command.type === 'message') {
-            const topic = message.command.topic;
-            const key = message.command.key;
 
+        if (message.command.type === 'ack' || message.command.type === 'error') {
+            console.info(`Ack || error received for ${message.messageId}`)
+
+            let operationsCallback = this.#operationsCallback.get(message.messageId);
+
+            if (operationsCallback) {
+                if (operationsCallback.operationCallback) {
+                    operationsCallback.operationCallback(message)
+                }
+                this.#operationsCallback.delete(message.messageId)
+            }
+
+        } else if (message.command.type === 'message') {
+
+            const subscriptionKey = this.#getSubscriptionKey(message.command.topic, message.command.key);
             let subscription;
-            if (this.#fullTopicsSubscriptions.has(topic)) {
-                subscription = this.#fullTopicsSubscriptions.get(topic)
+
+            if (this.#fullTopicsSubscriptions.has(message.command.topic)) {
+                subscription = this.#fullTopicsSubscriptions.get(message.command.topic)
             } else {
-                const subscriptionKey = this.#getSubscriptionKey(topic, key);
                 subscription = this.#keysSubscriptions.get(subscriptionKey);
             }
 
+            // if it has subscription, execute callback
             if (subscription && message.messageId !== subscription.lastMessageId) {
-                if (subscription.callback !== undefined) {
-                    console.log('found subscription')
-                    subscription.callback(message)
+                if (subscription.messageCallback) {
+                    subscription.messageCallback(message)
                 }
                 subscription.lastMessageId = message.messageId;
-                this.#sendAck(message.messageId);
             }
+
+            this.#sendAck(message.messageId);
         } else {
-            console.warn("Unknown message received")
+            console.error("Unknown message received, check gateway for root cause.")
             console.log(message)
         }
     }
@@ -165,7 +194,7 @@ export default class GatewayClient {
     #send(payload: any) {
         if (this.#socket && this.#socket.readyState === WebSocket.OPEN) {
             const message = JSON.stringify(payload);
-            console.log('Send with ')
+            console.log('Sent: ')
             console.log(payload)
             this.#socket.send(message);
         }
@@ -173,10 +202,10 @@ export default class GatewayClient {
 
     #sendAck(messageId: string) {
         const payload = {
+            messageId,
             command: {
                 type: 'ack'
             },
-            messageId: messageId,
         };
         this.#send(payload);
     }

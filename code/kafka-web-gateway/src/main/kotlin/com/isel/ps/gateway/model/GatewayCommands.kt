@@ -3,6 +3,7 @@ package com.isel.ps.gateway.model
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.core.JsonParser
+import com.fasterxml.jackson.core.JsonToken
 import com.fasterxml.jackson.databind.DeserializationContext
 import com.fasterxml.jackson.databind.JsonDeserializer
 import com.fasterxml.jackson.databind.JsonNode
@@ -36,7 +37,11 @@ data class Consume(val maxQuantity: Int?, val scale: String?) : Command("consume
     constructor() : this(null, null)
 }
 
-data class Publish(val topic: String, val key: String?, val value: String) : Command("publish") {
+data class Publish(
+    val topic: String,
+    val key: String?,
+    val value: String
+) : Command("publish") {
     constructor() : this("", null, "")
 }
 
@@ -55,9 +60,7 @@ data class Message(
     constructor() : this("", 0, null, "", 0, 0)
 }
 
-class Ack(val topic: String?, val key: String?) : Command("ack") {
-    constructor() : this(null, null)
-}
+class Ack : Command("ack")
 
 data class Err(val message: String?) : Command("error")
 

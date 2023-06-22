@@ -6,37 +6,34 @@ import {useUser} from "@/contexts/UserContext";
 import {useParams} from "next/navigation";
 import React, {useEffect} from "react";
 import {useChatRoom} from "@/contexts/ChatRoomContext";
-import {IGatewayMessage} from "@/lib/GatewayClient";
 
 function Page() {
     const {roomId} = useParams();
-    const {gateway, roomUsers, messages, addMessage} = useChatRoom();
+    const {gateway, roomUsers, addMessage} = useChatRoom();
     const {username} = useUser();
-
-    const handleMessage = (message: IGatewayMessage) => {
-        addMessage(roomId, message);
-    }
 
     useEffect(() => {
         if (roomUsers[roomId]?.includes(username)) return;
-        gateway?.subscribe(roomId, undefined, (message: any) => {
-            console.log(message)
-            if (message.command.type === 'message') {
-                // Handle regular message
-                handleMessage(message);
-            } else if (message.command.type === 'ack') {
-                // Acknowledgement received
-                console.log("displaySubscribedRoom"); // TODO
-                // displaySubscribedRoom(selectedTopic);
-
-            } else if (message.command.type === 'err') {
-                console.log(`ERR CALLBACK`);
-                alert(`Failed to subscribe: ${message.command.error}`);
-            } else {
-                console.log(`Unknown message received ${message}`)
-            }
-        });
-    }, [roomId, gateway]);
+        gateway?.subscribe(
+            roomId,
+            undefined,
+            (message: any) => {
+                if (message.command.type === 'message') {
+                    addMessage(roomId, message);
+                } else {
+                    console.log(`Unknown message received ${message}`)
+                }
+            },
+            (resultMessage: any) => {
+                if (resultMessage.command.type === 'ack') { // TODO: Implement server side verification of this message.
+                    gateway?.publish(roomId, username, JSON.stringify({type: "join"}), undefined)
+                } else if (resultMessage.command.type === 'error') {
+                    alert(`Failed to subscribe: ${resultMessage.command.error}`);
+                } else {
+                    console.log(`Unknown message received ${resultMessage}`)
+                }
+            });
+    }, []);
 
     return (
         <div className="flex relative flex-col w-full h-screen">

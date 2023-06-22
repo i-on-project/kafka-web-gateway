@@ -38,8 +38,8 @@ class MessageStatusManager(private val messageStatus: MessageStatus) {
             val messageTimestamp: Instant = messageInfo.timestamp
             val currentTimestamp = Instant.now()
             val age: Duration = Duration.between(messageTimestamp, currentTimestamp)
-            // Remove messages older than 15 minutes
-            return age > Duration.ofMinutes(5)
+            // Remove messages older than 1 minutes
+            return age > Duration.ofMinutes(1)
         }
         return false
     }
