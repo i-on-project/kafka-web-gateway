@@ -12,10 +12,11 @@ import java.time.Instant
 class GatewayRepository(private val jdbcTemplate: JdbcTemplate) {
     fun create(gateway: Gateway) {
         val sql =
-            "INSERT INTO gateway (gateway_id, topic_clients, topic_commands, active, updated_at) VALUES (?, ?, ?, ?, ?)"
+            "INSERT INTO gateway (gateway_id, topic_keys, topic_clients, topic_commands, active, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
         jdbcTemplate.update(
             sql,
             gateway.gatewayId,
+            gateway.topicKeys,
             gateway.topicClients,
             gateway.topicCommands,
             gateway.active,
@@ -29,6 +30,7 @@ class GatewayRepository(private val jdbcTemplate: JdbcTemplate) {
             jdbcTemplate.queryForObject(sql, gatewayId) { rs, _ ->
                 Gateway(
                     gatewayId = rs.getLong("gateway_id"),
+                    topicKeys = rs.getString("topic_keys"),
                     topicClients = rs.getString("topic_clients"),
                     topicCommands = rs.getString("topic_commands"),
                     active = rs.getBoolean("active"),
@@ -60,6 +62,7 @@ class GatewayRepository(private val jdbcTemplate: JdbcTemplate) {
         return jdbcTemplate.query(sql) { rs, _ ->
             Gateway(
                 gatewayId = rs.getLong("gateway_id"),
+                topicKeys = rs.getString("topic_keys"),
                 topicClients = rs.getString("topic_clients"),
                 topicCommands = rs.getString("topic_commands"),
                 active = rs.getBoolean("active"),

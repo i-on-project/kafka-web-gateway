@@ -6,6 +6,7 @@ create table if not exists client
 create table if not exists gateway
 (
     gateway_id     bigint primary key,
+    topic_keys     varchar(255) not null,
     topic_clients  varchar(255) not null,
     topic_commands varchar(255) not null,
     active         boolean      not null,

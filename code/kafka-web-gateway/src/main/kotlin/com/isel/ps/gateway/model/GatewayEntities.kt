@@ -8,6 +8,7 @@ data class Client(
 
 data class Gateway(
     val gatewayId: Long,
+    val topicKeys: String,
     val topicClients: String,
     val topicCommands: String,
     val active: Boolean,

@@ -79,4 +79,16 @@ class GatewayKafka {
     data class ProducerResult(
         val clientMessageId: String, val topic: String, val partition: Int, val offset: Long, val timestamp: Long
     )
+
+    data class SystemGateway(
+        val gatewayId: String,
+        val keysTopicName: String,
+        val clientsTopicName: String,
+        val commandsTopicName: String?
+    )
+
+    data class GatewayTopicKeys(
+        val keys: List<String>?,
+        val allKeys: Boolean?
+    )
 }

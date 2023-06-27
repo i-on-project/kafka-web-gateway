@@ -114,7 +114,7 @@ class RecordDealer(
     }
 
     private fun getOriginalTopic(record: ConsumerRecord<String, String>) =
-        String(record.headers().lastHeader("original_topic").value())
+        String(record.headers().lastHeader("origin-topic").value())
 
     fun addSubscription(clientSession: ClientSession, subscription: Subscription): AddSubscriptionResult {
         return when (val res = addSubscriptionToLocalMaps(clientSession, subscription)) {
@@ -134,15 +134,23 @@ class RecordDealer(
 
     private fun updateRequestedKeysTopic(topic: String) {
         val record = ProducerRecord(
-            "gateway-${gatewayConfig.getGateway().gatewayId}-keys",
+            gatewayConfig.getGateway().topicKeys,
             topic,
             mapper.writeValueAsString(getAllTopicKeys(topic))
         )
         producer.send(record)
     }
 
-    private fun getAllTopicKeys(topic: String): List<String> {
-        return keys.keys().toList().filter { it.first == topic }.map { it.second }
+    private fun getAllTopicKeys(topic: String): GatewayKafka.GatewayTopicKeys {
+        return if (fullTopics.containsKey(topic)) {
+            GatewayKafka.GatewayTopicKeys(null, true)
+        }
+        else {
+            GatewayKafka.GatewayTopicKeys(
+                keys.keys().toList().filter { it.first == topic }.map { it.second },
+                false
+            )
+        }
     }
 
     private fun addSubscriptionToLocalMaps(

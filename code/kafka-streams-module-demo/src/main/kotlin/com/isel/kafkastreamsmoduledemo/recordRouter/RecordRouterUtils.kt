@@ -16,6 +16,7 @@ class RecordRouterUtils(
 ) {
     private val RED_TEXT = "\u001B[31m"
     private val GREEN_TEXT = "\u001B[32m"
+    private val PURPLE_BACKGROUND = "\u001B[45m"
     private val RESET_TEXT_COLOR = "\u001B[0m"
 
     fun printRed(message: String) {
@@ -23,6 +24,10 @@ class RecordRouterUtils(
     }
     fun printGreen(message: String) {
         println("${GREEN_TEXT}${message}${RESET_TEXT_COLOR}")
+    }
+
+    fun printWithPurpleBackground(message: String) {
+        println("${PURPLE_BACKGROUND}${message}${RESET_TEXT_COLOR}")
     }
 
     fun getSystemTopicConsumerProperties(groupId: String): Properties {

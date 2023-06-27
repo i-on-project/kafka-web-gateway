@@ -55,15 +55,15 @@ class RRTesting(
         props["value.serializer"] = "org.apache.kafka.common.serialization.StringSerializer"
         val producer: KafkaProducer<String, String> = KafkaProducer<String, String>(props)
 
-        val newGatewayKeyTopic = SystemGatewayKeyTopic("id1", "gateway-01-keys-topic", "gateway-01-clients-topic", "")
+        val newGatewayKeyTopic = SystemGateway("id1", "gateway-01-keys-topic", "gateway-01-clients-topic", "")
         val newGatewayKeyTopicJson: String = mapper.writeValueAsString(newGatewayKeyTopic)
         utils.printRed("TEST newGatewayKeyTopicJson as string: \n $newGatewayKeyTopicJson")
 
-        producer.send(ProducerRecord(systemTopic, "new-gateway-key-topic", newGatewayKeyTopicJson))
+        producer.send(ProducerRecord(systemTopic, "new-gateway", newGatewayKeyTopicJson))
 
         Thread.sleep(1000)
 
-        producer.send(ProducerRecord(newGatewayKeyTopic.keysTopicName, inputTopicA, mapper.writeValueAsString(listOf("0", "1"))))
+        producer.send(ProducerRecord(newGatewayKeyTopic.keysTopicName, inputTopicA, mapper.writeValueAsString(GatewayTopicKeys(listOf("0", "1"), null))))
 
         Thread.sleep(2000)
 
@@ -75,14 +75,15 @@ class RRTesting(
 
         Thread.sleep(6000)
 
-        val newGatewayKeyTopic2 = SystemGatewayKeyTopic("id2", "gateway-02-keys-topic", "gateway-02-clients-topic", "")
+        val newGatewayKeyTopic2 = SystemGateway("id2", "gateway-02-keys-topic", "gateway-02-clients-topic", "")
         val newGatewayKeyTopicJson2: String = mapper.writeValueAsString(newGatewayKeyTopic2)
-        producer.send(ProducerRecord(systemTopic, "new-gateway-key-topic", newGatewayKeyTopicJson2))
+        producer.send(ProducerRecord(systemTopic, "new-gateway", newGatewayKeyTopicJson2))
 
         Thread.sleep(1000)
 
-        producer.send(ProducerRecord(newGatewayKeyTopic2.keysTopicName, inputTopicA, mapper.writeValueAsString(listOf("1", "2"))))
-        producer.send(ProducerRecord(newGatewayKeyTopic2.keysTopicName, inputTopicB, mapper.writeValueAsString(listOf("5", "6"))))
+        producer.send(ProducerRecord(newGatewayKeyTopic2.keysTopicName, inputTopicA, mapper.writeValueAsString(GatewayTopicKeys(listOf("1", "2"), null))))
+        //producer.send(ProducerRecord(newGatewayKeyTopic2.keysTopicName, inputTopicB, mapper.writeValueAsString(GatewayTopicKeys(listOf("5", "6"), null))))
+        producer.send(ProducerRecord(newGatewayKeyTopic2.keysTopicName, inputTopicB, mapper.writeValueAsString(GatewayTopicKeys(listOf(), true))))
 
         Thread.sleep(2000)
 
@@ -133,7 +134,7 @@ class RRTesting(
         consumerExecutor.submit {
             while (true) {
                 consumer.poll(Duration.ofSeconds(1)).forEach { record ->
-                    utils.printRed("CONSUMER -> topic[${record.topic()}] - key[${record.key()}] - value[${record.value()}]")
+                    utils.printRed("CONSUMER -> topic[${record.topic()}] - key[${record.key()}] - value[${record.value()}] - origin-topic[${String(record.headers().lastHeader("origin-topic").value())}]")
                 }
             }
         }

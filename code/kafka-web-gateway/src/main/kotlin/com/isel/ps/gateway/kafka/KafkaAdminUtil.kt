@@ -20,8 +20,11 @@ class KafkaAdminUtil(
         adminClient = Admin.create(adminConfig)
     }
 
-    fun createTopic(topicName: String, numPartitions: Int, replicationFactor: Short) {
+    fun createTopic(topicName: String, numPartitions: Int, replicationFactor: Short, configs: Map<String, String>? = null) {
         val newTopic = NewTopic(topicName, numPartitions, replicationFactor)
+        if (configs != null ) {
+            newTopic.configs(configs)
+        }
         val options = CreateTopicsOptions().timeoutMs(5000)
         try {
             adminClient.createTopics(setOf(newTopic), options).all().get()
