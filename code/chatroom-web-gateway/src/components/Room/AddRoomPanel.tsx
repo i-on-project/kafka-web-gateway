@@ -26,7 +26,7 @@ function AddRoomPanel({hideAddRoomPanel}: any) {
             },
         ]);
         hideAddRoomPanel(true);
-        router.replace("/chat/" + id);
+        router.push("/chat/" + id);
     };
 
     return (

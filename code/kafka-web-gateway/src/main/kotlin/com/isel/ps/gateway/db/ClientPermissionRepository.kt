@@ -34,6 +34,26 @@ class ClientPermissionRepository(private val jdbcTemplate: JdbcTemplate) {
         }
     }
 
+    fun hasPermission(clientId: String, topic: String, key: String?, readPermission: Boolean): Boolean {
+        val sql = """
+            SELECT COUNT(*) FROM client_permission cp
+            JOIN permission p ON cp.permission_id = p.permission_id
+            WHERE cp.client_id = ? AND p.topic = ? AND (p.key = ? OR p.key IS NULL) AND (p.read = ? OR p.write = ?);
+        """
+
+        val keyParam = key ?: ""
+
+        return jdbcTemplate.queryForObject(
+            sql,
+            Int::class.java,
+            clientId,
+            topic,
+            keyParam,
+            readPermission,
+            !readPermission
+        ) > 0
+    }
+
     fun getAll(): List<ClientPermission> {
         val sql = "SELECT * FROM client_permission"
         return jdbcTemplate.query(sql) { rs, _ ->

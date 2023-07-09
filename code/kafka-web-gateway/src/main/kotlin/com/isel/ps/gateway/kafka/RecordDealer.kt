@@ -1,5 +1,6 @@
 package com.isel.ps.gateway.kafka
 
+import GatewayKafka
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.isel.ps.gateway.config.GatewayConfig
 import com.isel.ps.gateway.model.ClientMessage
@@ -30,7 +31,8 @@ class RecordDealer(
     private val kafkaClientsUtils: KafkaClientsUtils,
     private val gatewayConfig: GatewayConfig,
     private val producer: KafkaProducer<String, String>,
-    private val messageStatus: MessageStatus
+    private val messageStatus: MessageStatus,
+    private val kafkaAdminUtil: KafkaAdminUtil
 ) {
     // TODO: Think about multiple consumers (probably same group id) per gateway
     private val consumer: KafkaConsumer<String, String>
@@ -120,6 +122,7 @@ class RecordDealer(
         return when (val res = addSubscriptionToLocalMaps(clientSession, subscription)) {
             is Result.Success -> when (res.value) {
                 is AddSubscriptionSuccess.Added -> {
+                    createTopicIfNotExists(subscription.topic)
                     updateRequestedKeysTopic(subscription.topic)
                     Result.Success(AddSubscriptionSuccess.Added)
                 }
@@ -130,6 +133,10 @@ class RecordDealer(
             else -> Result.Error(AddSubscriptionError.Unknown)
         }
 
+    }
+
+    private fun createTopicIfNotExists(topic: String) {
+        kafkaAdminUtil.createTopic(topic, 3, 3)
     }
 
     private fun updateRequestedKeysTopic(topic: String) {
@@ -144,8 +151,7 @@ class RecordDealer(
     private fun getAllTopicKeys(topic: String): GatewayKafka.GatewayTopicKeys {
         return if (fullTopics.containsKey(topic)) {
             GatewayKafka.GatewayTopicKeys(null, true)
-        }
-        else {
+        } else {
             GatewayKafka.GatewayTopicKeys(
                 keys.keys().toList().filter { it.first == topic }.map { it.second },
                 false

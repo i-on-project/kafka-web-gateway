@@ -8,17 +8,16 @@ import org.springframework.jdbc.core.queryForObject
 import org.springframework.jdbc.support.GeneratedKeyHolder
 import org.springframework.stereotype.Repository
 import java.sql.ResultSet
-import java.sql.Statement
 
 @Repository
 class PermissionRepository(private val jdbcTemplate: JdbcTemplate) {
-    fun create(permission: Permission): Int {
+    fun create(permission: Permission): Permission {
         val sql = "INSERT INTO permission (topic, key, read, write) VALUES (?, ?, ?, ?)"
 
         val keyHolder = GeneratedKeyHolder()
 
         jdbcTemplate.update({ connection ->
-            val preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)
+            val preparedStatement = connection.prepareStatement(sql, arrayOf("permission_id"))
             preparedStatement.setString(1, permission.topic)
             preparedStatement.setString(2, permission.key)
             preparedStatement.setBoolean(3, permission.read)
@@ -27,7 +26,9 @@ class PermissionRepository(private val jdbcTemplate: JdbcTemplate) {
             preparedStatement
         }, keyHolder)
 
-        return keyHolder.key?.toInt() ?: throw IllegalStateException("Failed to retrieve generated ID")
+        val generatedId = keyHolder.key?.toInt() ?: throw IllegalStateException("Failed to retrieve generated ID")
+
+        return permission.copy(permissionId = generatedId)
     }
 
     fun getById(permissionId: Int): Permission? {

@@ -1,5 +1,6 @@
 package com.isel.ps.gateway.utils
 
+import com.isel.ps.gateway.Utils
 import com.isel.ps.gateway.model.MessageInfo
 import com.isel.ps.gateway.websocket.ClientAuthenticationInterceptor
 import org.slf4j.Logger
@@ -13,6 +14,8 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
+
+private val logger: Logger = LoggerFactory.getLogger(Utils::class.java)
 
 fun ConcurrentWebSocketSessionDecorator.sendMessage(
     messageId: String,
@@ -38,6 +41,7 @@ fun ConcurrentWebSocketSessionDecorator.sendMessage(
         messageExecutor,
     )
 
+    logger.info("Sent $textMessage")
     session.sendMessage(textMessage)
     messageExecutor.schedule(sendTask, 10000L, TimeUnit.MILLISECONDS)
 }
@@ -54,6 +58,7 @@ class SendTask(
     private val logger: Logger = LoggerFactory.getLogger(SendTask::class.java)
     override fun run() {
         if (messageStatuses[userId]?.get(messageId)?.isAcked == false && remainingRetries > 0) {
+            logger.info("Sent $textMessage")
             session.sendMessage(textMessage)
             rescheduleTask(remainingRetries - 1)
         } else {

@@ -34,6 +34,27 @@ class RolePermissionRepository(private val jdbcTemplate: JdbcTemplate) {
         }
     }
 
+    fun hasPermission(roleId: Int, topic: String, key: String?, readPermission: Boolean): Boolean {
+        val sql = """
+            SELECT COUNT(*) FROM role_permission rp
+            JOIN permission p ON rp.permission_id = p.permission_id
+            WHERE rp.role_id = ? AND p.topic = ? AND (p.key = ? OR p.key IS NULL) AND (p.read = ? OR p.write = ?);
+        """
+
+        val keyParam = key ?: ""
+
+        return jdbcTemplate.queryForObject(
+            sql,
+            Int::class.java,
+            roleId,
+            topic,
+            keyParam,
+            readPermission,
+            !readPermission
+        ) > 0
+    }
+
+
     fun getAll(): List<RolePermission> {
         val sql = "SELECT * FROM role_permission"
         return jdbcTemplate.query(sql) { rs, _ ->

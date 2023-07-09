@@ -35,8 +35,7 @@ class PermissionService(private val permissionRepository: PermissionRepository) 
             return Success(foundPermission)
         }
 
-        permission.permissionId = permissionRepository.create(permission)
-        return Success(permission)
+        return Success(permissionRepository.create(permission))
     }
 
     fun deletePermission(

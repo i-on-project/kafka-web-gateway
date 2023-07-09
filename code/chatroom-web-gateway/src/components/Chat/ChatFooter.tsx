@@ -10,11 +10,16 @@ function ChatFooter({roomId}: { roomId: string }) {
     const [message, setMessage] = useState<string>("");
     const {gateway} = useChatRoom();
     const {username} = useUser();
+    const [publishError, setPublishError] = useState<string | null>(null);
 
     const handleSendMessage = (e: any, message: string) => {
         e.preventDefault();
         if (message.trim()) {
-            gateway?.publish(roomId, username, JSON.stringify({type: "message", text: message}), undefined);
+            gateway
+                ?.publish(roomId, username, JSON.stringify({type: "message", text: message}))
+                .catch((error) => {
+                    setPublishError(`Failed to publish message: ${error.message}`);
+                });
         }
         setMessage("");
     };
@@ -51,6 +56,7 @@ function ChatFooter({roomId}: { roomId: string }) {
                     onClick={(e) => handleSendMessage(e, message)}
                 />
             )}
+            {publishError && <div className="text-red-500">{publishError}</div>}
         </div>
     );
 }

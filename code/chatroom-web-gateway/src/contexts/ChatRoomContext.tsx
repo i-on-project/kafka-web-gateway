@@ -40,7 +40,7 @@ export default function ChatRoomProvider({children}: { children: React.ReactNode
             router.replace("/");
             return;
         }
-        const gateway = new GatewayClient('ws://localhost:8083/socket').connect(username); // TODO: set to 8080
+        const gateway = new GatewayClient('ws://localhost:8080/socket').connect(username); // TODO: set to 8080
         setGateway(gateway);
     }, []);
 

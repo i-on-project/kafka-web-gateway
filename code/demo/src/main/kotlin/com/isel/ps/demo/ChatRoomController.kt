@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.http.*
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.client.RestTemplate
 import java.util.*
@@ -28,7 +29,7 @@ data class ClientPermission(
 data class Room(
     val id: String,
     val title: String,
-    val allowed: MutableList<String>
+    var connectedClients: MutableList<String> = mutableListOf()
 ) {
     constructor() : this("", "", mutableListOf())
 }
@@ -36,9 +37,9 @@ data class Room(
 @RestController
 class ChatRoomController {
 
-    val rooms: List<Room> = mutableListOf(
-        Room("8d818415-7f23-45f3-b909-541aae83a15f", "geral", mutableListOf()),
-        Room("154e0098-ebe4-4dd7-bce2-f2168eb3972e", "privado", mutableListOf())
+    val rooms: MutableList<Room> = mutableListOf(
+        Room("8d818415-7f23-45f3-b909-541aae83a15f", "geral"),
+        Room("154e0098-ebe4-4dd7-bce2-f2168eb3972e", "privado")
     )
 
     @GetMapping("/rooms")
@@ -46,36 +47,55 @@ class ChatRoomController {
         return ResponseEntity.ok(rooms)
     }
 
-    @GetMapping("/room/{room}/{client}")
-    fun givePermissionTo(@PathVariable room: String, @PathVariable client: String): ResponseEntity<*> {
+    @PostMapping("/room/{room}/{client}")
+    fun joinRoom(
+        @PathVariable room: String,
+        @PathVariable client: String
+    ): ResponseEntity<*> {
 
-        val permission = createPermission(room)
+        val writePermission = createPermission(room, client, true, false)
+        val readPermission = createPermission(room, null, false, true)
 
-        if (permission == null) {
+        if (writePermission == null || readPermission == null) {
             println("Unable to create permission.")
             return ResponseEntity.badRequest().body(Unit)
-
         }
 
-        return if (assignToClient(client, permission)) {
-            rooms.find {
-                it.title == room
-            }?.allowed?.add(client)
+        val writeAssigned = assignToClient(client, writePermission)
+        val readAssigned = assignToClient(client, readPermission)
 
-            ResponseEntity.ok(Unit)
+        return if (writeAssigned && readAssigned) {
+            val found = rooms.find {
+                it.id == room
+            }
+
+            if (found != null) {
+                if (!found.connectedClients.contains(client)) {
+                    found.connectedClients.add(client)
+                }
+            } else {
+                rooms.add(Room(room, room, mutableListOf(client)))
+            }
+
+            ResponseEntity.ok(found?.connectedClients ?: mutableListOf(client))
         } else {
             ResponseEntity.badRequest().body(Unit)
         }
     }
 
-    private fun createPermission(name: String): Permission? {
+    private fun createPermission(
+        topic: String,
+        key: String?,
+        write: Boolean,
+        read: Boolean
+    ): Permission? {
         val restTemplate = RestTemplate()
 
         val headers = HttpHeaders()
         headers.contentType = MediaType.APPLICATION_JSON
         headers.setBearerAuth("348fd1e9-d401-4f4a-b4ab-917297d522c7")
 
-        val requestBody = Permission(null, name, null, true, true)
+        val requestBody = Permission(null, topic, key, read, write)
         val httpEntity = HttpEntity(requestBody, headers)
 
         val url = "http://localhost:8080/api/permission"

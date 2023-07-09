@@ -41,6 +41,10 @@ export default class GatewayClient {
     }
 
     connect(token: string) {
+        if (this.#socket?.readyState !== WebSocket.CLOSED) {
+            this.disconnect()
+        }
+
         this.#socket = new WebSocket(`${this.#url}?token=${token}`);
 
         this.#socket.onopen = () => {
@@ -84,15 +88,23 @@ export default class GatewayClient {
         this.#onCloseCallback = callback;
     }
 
-    subscribe(topic: string, key: string | undefined, messageCallback: Function | undefined, operationCallback: Function | undefined) {
+    subscribe(topic: string, key: string | undefined, messageCallback: Function | undefined): Promise<void> {
         const messageId = crypto.randomUUID()
 
-        if (!this.#operationsCallback.has(messageId)) {
+        const promise = new Promise<void>((resolve, reject) => {
+            const callback = (message: any) => {
+                if (message.command.type === 'ack') {
+                    resolve();
+                } else if (message.command.type === 'error') {
+                    reject(new Error(message.command.message));
+                }
+            };
+
             this.#operationsCallback.set(messageId, {
                 expiresAt: Date.now() + 60_000,
-                operationCallback: operationCallback
+                operationCallback: callback,
             });
-        }
+        });
 
         const subscriptionKey = this.#getSubscriptionKey(topic, key);
         if (key == null) {
@@ -127,17 +139,27 @@ export default class GatewayClient {
             }
         };
         this.#send(payload);
+
+        return promise;
     }
 
-    publish(topic: string, key: string | undefined, message: string, operationCallback: Function | undefined) {
+    publish(topic: string, key: string | undefined, message: string): Promise<void> {
         const messageId = crypto.randomUUID()
 
-        if (!this.#operationsCallback.has(messageId)) {
+        const promise = new Promise<void>((resolve, reject) => {
+            const callback = (message: any) => {
+                if (message.command.type === 'ack') {
+                    resolve();
+                } else if (message.command.type === 'error') {
+                    reject(new Error(message.command.message));
+                }
+            };
+
             this.#operationsCallback.set(messageId, {
                 expiresAt: Date.now() + 60_000,
-                operationCallback: operationCallback
+                operationCallback: callback,
             });
-        }
+        });
 
         const payload = {
             messageId,
@@ -149,12 +171,13 @@ export default class GatewayClient {
             }
         };
         this.#send(payload);
+        return promise;
     }
 
     #handleMessage(message: IGatewayMessage) {
 
         if (message.command.type === 'ack' || message.command.type === 'error') {
-            console.info(`Ack || error received for ${message.messageId}`)
+            console.info(`Ack || error received for ${message.messageId}`);
 
             let operationsCallback = this.#operationsCallback.get(message.messageId);
 

@@ -6,6 +6,7 @@ import {useRoom} from "@/contexts/RoomContext";
 import {BiMessageAdd} from "react-icons/bi";
 import AddRoomPanel from "./AddRoomPanel";
 import {useChatRoom} from "@/contexts/ChatRoomContext";
+import ConnectionStatus from "@/components/shared/ConnectionStatus";
 
 function RoomSideBar() {
 
@@ -17,6 +18,7 @@ function RoomSideBar() {
 
     return (
         <div className="overflow-y-scroll w-20 h-screen border-r-2 sm:w-1/4">
+            <ConnectionStatus/>
             <p className="px-2 py-5 sm:px-5 h-[56px] text-xl sm:text-2xl font-semibold">Rooms</p>
             {rooms.map((room: IRoom, index) => {
                 return (

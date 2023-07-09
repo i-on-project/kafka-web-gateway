@@ -7,6 +7,7 @@ import com.isel.ps.gateway.db.SubscriptionRepository
 import com.isel.ps.gateway.kafka.RecordDealer
 import com.isel.ps.gateway.model.*
 import com.isel.ps.gateway.service.ClientService
+import com.isel.ps.gateway.service.PermissionValidatorService
 import com.isel.ps.gateway.service.SessionService
 import com.isel.ps.gateway.websocket.ClientAuthenticationInterceptor.Companion.CLIENT_ID
 import org.apache.kafka.clients.producer.KafkaProducer
@@ -29,7 +30,8 @@ class GatewayWebsocketHandler(
     private val recordDealer: RecordDealer,
     private val messageStatus: MessageStatus,
     private val clientService: ClientService,
-    private val sessionService: SessionService
+    private val sessionService: SessionService,
+    private val permissionValidatorService: PermissionValidatorService
 ) : WebSocketHandler {
 
     companion object {
@@ -56,7 +58,7 @@ class GatewayWebsocketHandler(
         try {
             payload = message.payload as String
         } catch (ex: Exception) {
-            session.sendMessage(json(ClientMessage(null, Err("Invalid payload."))))
+            sendErr(ClientMessage(null, Err("")), session, "Invalid payload.")
             return
         }
 
@@ -65,52 +67,66 @@ class GatewayWebsocketHandler(
             clientMessage = objectMapper.readValue<ClientMessage>(payload)
         } catch (ex: Exception) {
             ex.printStackTrace()
-            session.sendMessage(json(ClientMessage(null, Err("Unknown message received."))))
+            sendErr(ClientMessage(null, Err("")), session, "Unknown message received.")
             return
         }
+
+        logger.info("[${clientMessage.messageId}] Received $payload")
+
+        val clientId = getClientIdFromSession(session)
 
         val concurrentSession = ConcurrentWebSocketSessionDecorator(session, 5000, 65536)
 
         when (clientMessage.command) {
             is Subscribe -> {
                 val subscribeCommand = clientMessage.command
-                subscribeCommand.topics.forEach { topic ->
-                    val subscription = Subscription(
-                        (Math.random() * 10000).toInt(),
-                        session.id,
-                        topic.topic,
-                        topic.key
-                    ) //TODO: debate how to input the values..
-                    recordDealer.addSubscription(sessionsStorage.getClientSession(session.id)!!, subscription)
+                if (permissionValidatorService.hasPermissionForAll(
+                        subscribeCommand.topics,
+                        clientId,
+                        true
+                    )
+                ) {
+                    subscribeCommand.topics.forEach { topic ->
+                        val subscription = Subscription(
+                            (Math.random() * 10000).toInt(),
+                            session.id,
+                            topic.topic,
+                            topic.key
+                        ) //TODO: debate how to input the values..
+                        recordDealer.addSubscription(sessionsStorage.getClientSession(session.id)!!, subscription)
+                    }
+                    sendAck(
+                        clientMessage,
+                        concurrentSession
+                    )
+                } else {
+                    sendErr(clientMessage, concurrentSession, "Operation not allowed, no permission.")
                 }
-                sendAck(
-                    clientMessage,
-                    concurrentSession
-                )
             }
 
             is Consume -> {
                 val consumeCommand = clientMessage.command
-                /*
-                concurrentSession.sendMessage(
-                    UUID.randomUUID().toString(),
-                    TextMessage("Please consume this message"),
-                    messageStatus.getMessageStatuses(),
-                    executor,
-                    3
-                )
-                 */
             }
 
-            is Publish -> { //TODO: Needs filtering/confirmation for sending records to topics
+            is Publish -> {
                 val publishCommand = clientMessage.command
                 val producerRecord = ProducerRecord(publishCommand.topic, publishCommand.key, publishCommand.value)
-                kafkaProducer.send(producerRecord) { _, err ->
-                    if (err != null) {
-                        concurrentSession.sendMessage(json(Err(err.message)))
-                    } else {
-                        sendAck(clientMessage, concurrentSession)
+                if (permissionValidatorService.hasPermission(
+                        publishCommand.topic,
+                        publishCommand.key,
+                        clientId,
+                        false
+                    )
+                ) {
+                    kafkaProducer.send(producerRecord) { _, err ->
+                        if (err != null) {
+                            sendErr(clientMessage, concurrentSession, err.message ?: "")
+                        } else {
+                            sendAck(clientMessage, concurrentSession)
+                        }
                     }
+                } else {
+                    sendErr(clientMessage, concurrentSession, "Operation not allowed, no permission.")
                 }
             }
 
@@ -125,7 +141,7 @@ class GatewayWebsocketHandler(
             }
 
             is Ack -> {
-                val userMessageStatuses = messageStatus.getMessageStatuses()[getUserIdFromSession(session)]
+                val userMessageStatuses = messageStatus.getMessageStatuses()[clientId]
 
                 if (userMessageStatuses != null) {
                     userMessageStatuses[clientMessage.messageId] = MessageInfo(Instant.now(), true)
@@ -154,7 +170,7 @@ class GatewayWebsocketHandler(
 
         schedulePingMessages(session, timer)
 
-        val clientId = getUserIdFromSession(session)
+        val clientId = getClientIdFromSession(session)
         clientService.createClientIfNotExists(Client(clientId))
         logger.info("New connection from {}.", clientId)
     }
@@ -167,7 +183,7 @@ class GatewayWebsocketHandler(
         recordDealer.removeSubscriptionsFromLocalMaps(sessionsStorage.getClientSession(session.id)!!)
         sessionsStorage.removeSession(session.id)
 
-        val userId: String = getUserIdFromSession(session)
+        val userId: String = getClientIdFromSession(session)
         // Remove the message statuses for the specific user
         messageStatus.getMessageStatuses().remove(userId)
 
@@ -180,12 +196,18 @@ class GatewayWebsocketHandler(
 
     override fun handleTransportError(session: WebSocketSession, exception: Throwable) {}
 
-    private fun getUserIdFromSession(session: WebSocketSession): String {
+    private fun getClientIdFromSession(session: WebSocketSession): String {
         return session.attributes[CLIENT_ID] as String
     }
 
     private fun sendAck(clientMessage: ClientMessage, session: WebSocketSession) {
+        logger.info("[${clientMessage.messageId}] Sent ack")
         session.sendMessage(json(ClientMessage(clientMessage.messageId, Ack())))
+    }
+
+    private fun sendErr(clientMessage: ClientMessage, session: WebSocketSession, message: String) {
+        logger.warn("[${clientMessage.messageId}] Sent Err (${message})")
+        session.sendMessage(json(ClientMessage(clientMessage.messageId, Err(message))))
     }
 
     private fun schedulePingMessages(session: WebSocketSession, timer: Timer) {
