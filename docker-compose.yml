@@ -5,7 +5,7 @@ services:
     container_name: db-g06-tests
     hostname: db-g06-tests
     build:
-      context: .
+      context: code/kafka-web-gateway
       dockerfile: docker/gateway/Dockerfile-db-test
     environment:
       - POSTGRES_USER=gateway_user
@@ -18,7 +18,7 @@ services:
     container_name: spring-service-1
     hostname: spring-service-1
     build:
-      context: .
+      context: code/kafka-web-gateway
       dockerfile: docker/gateway/Dockerfile-spring
     environment:
       PORT: 8081
@@ -44,7 +44,7 @@ services:
     container_name: spring-service-2
     hostname: spring-service-2
     build:
-      context: .
+      context: code/kafka-web-gateway
       dockerfile: docker/gateway/Dockerfile-spring
     environment:
       PORT: 8082
@@ -58,6 +58,27 @@ services:
     ports:
       - "8082:8082"
     depends_on:
+      - db-g06-tests
+      - zookeeper-1
+      - zookeeper-2
+      - zookeeper-3
+      - kafka-1
+      - kafka-2
+      - kafka-3
+
+  streams-service-1:
+    container_name: streams-service-1
+    hostname: streams-service-1
+    build:
+      context: code/kafka-streams-module-demo
+      dockerfile: docker/Dockerfile-streams
+    environment:
+      PORT: 8090
+      KAFKA-SERVERS: "kafka-1:9092,kafka-2:9092,kafka-3:9092"
+    ports:
+      - "8090:8090"
+    depends_on:
+      - spring-service-1
       - db-g06-tests
       - zookeeper-1
       - zookeeper-2
@@ -159,7 +180,7 @@ services:
       - "8080:8080"
       - "8088:8088"
     volumes:
-      - ./docker/gateway/nginx:/etc/nginx
+      - ./code/kafka-web-gateway/docker/gateway/nginx:/etc/nginx
     depends_on:
       - spring-service-1
       - spring-service-2
