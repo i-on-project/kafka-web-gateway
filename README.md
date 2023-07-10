@@ -45,7 +45,7 @@ The solution provides the option for the web clients to specify the keys from ea
 
 ## Documentation
 
-A final report of the project is available at [here](https://github.com/i-on-project/kafka-web-gateway/blob/main/docs/report.pdf).
+A final report of the project is available [here](https://github.com/i-on-project/kafka-web-gateway/blob/main/docs/report.pdf).
 
 Workspace projects:
 * **chatroom-backend**: A demonstration project of a Spring Chatroom server responsible for providing chatroom-frontend Web Browser Clients chat rooms to communicate with.
@@ -173,7 +173,7 @@ The GatewayClient class represents the main entry point of the library. Here's a
 
 ## Deployment
 
-A ready to deploy containerized environment is available through the script 'runProject.bat' script.
+A ready to deploy containerized environment is available through the 'runProject.bat' script.
 
 It consists of the following containers:
 * PostgreSQL Database
