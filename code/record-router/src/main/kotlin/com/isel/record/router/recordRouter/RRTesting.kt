@@ -1,7 +1,6 @@
 package com.isel.record.router.recordRouter
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.isel.record.router.utilsExperimentations.TopicKeys
 import org.apache.kafka.clients.admin.*
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.KafkaConsumer

@@ -25,3 +25,9 @@ data class HubTopicKeys(
 data class BooleanObj(
     var value: Boolean
 )
+
+data class TopicKeys(
+    val topic: String,
+    val keys: Array<Long>
+) {
+}
