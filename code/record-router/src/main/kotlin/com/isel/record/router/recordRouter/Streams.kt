@@ -46,7 +46,7 @@ class Streams(
 
         //rrTesting.testInitializer()
 
-        stateShower()
+        //stateShower()
         listenSystemTopic()
     }
 
@@ -86,7 +86,7 @@ class Streams(
 
 
         val consumer = KafkaConsumer<String, String>(recordRouterUtils.getSystemTopicConsumerProperties(
-            RECORD_ROUTER_SYSTEM_CONSUMER_ID
+            RECORD_ROUTER_SYSTEM_CONSUMER_ID + Math.random() * 10000
         ))
 
         consumer.subscribe(listOf(SYSTEM_TOPIC))
@@ -126,7 +126,7 @@ class Streams(
     fun createGatewayKeysConsumer(): KafkaConsumer<String, String> {
         recordRouterUtils.printRed("createGatewayKeysConsumer")
         return KafkaConsumer<String, String>(recordRouterUtils.getGatewayKeysTopicConsumerProperties(
-            RECORD_ROUTER_KEYS_CONSUMER_ID
+            RECORD_ROUTER_KEYS_CONSUMER_ID + Math.random() * 10000
         ))
     }
 

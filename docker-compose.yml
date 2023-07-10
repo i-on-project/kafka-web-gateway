@@ -88,6 +88,27 @@ services:
       - kafka-2
       - kafka-3
 
+  streams-service-2:
+    container_name: streams-service-2
+    hostname: streams-service-2
+    build:
+      context: code/record-router
+      dockerfile: docker/Dockerfile-streams
+    environment:
+      PORT: 8091
+      KAFKA-SERVERS: "kafka-1:9092,kafka-2:9092,kafka-3:9092"
+    ports:
+      - "8091:8091"
+    depends_on:
+      - spring-service-1
+      - db-g06-tests
+      - zookeeper-1
+      - zookeeper-2
+      - zookeeper-3
+      - kafka-1
+      - kafka-2
+      - kafka-3
+
   zookeeper-1:
     container_name: zookeeper-1
     hostname: zookeeper-1
