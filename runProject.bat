@@ -1,9 +1,9 @@
 @echo off
 
-cd .\code\kafka-web-gateway\
+cd .\code\gateway-hub\
 call gradlew task extractUberJar
 
-cd ..\kafka-streams-module-demo\
+cd ..\record-router\
 call gradlew task extractUberJar
 
 cd ...\
