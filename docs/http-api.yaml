@@ -1,0 +1,772 @@
+openapi: 3.0.1
+info:
+  title: Kafka Web Gateway OpenAPI 
+  version: 1.0.0
+  description: The HTTP API for the Kafka Web Gateway project
+servers:
+  # Added by API Auto Mocking Plugin
+  - description: SwaggerHub API Auto Mocking
+    url: https://virtserver.swaggerhub.com/Cors00/kafka-web-gateway/1.0.0
+  - url: http://localhost:8080
+    description: Server URL
+paths:
+  /api/setting/{name}:
+    put:
+      tags:
+        - setting-controller
+      description: Updates a Gateway configuration
+      operationId: updateSetting
+      parameters:
+        - name: name
+          description: Configuration property name, accepted values auth-server
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Setting'
+        required: true
+      responses:
+        '200':
+          description: Updated successfully
+          content:
+            '*/*':
+              schema:
+                type: object
+        '400':
+          description: Invalid configuration
+          content:
+            '*/*':
+              schema:
+                type: object
+        '401':
+          description: Unauthorized or no permission
+          content:
+            '*/*':
+              schema:
+                type: object
+        '404':
+          description: Setting not found
+          content:
+            '*/*':
+              schema:
+                type: object
+    delete:
+      tags:
+        - setting-controller
+      description: Remove a configuration
+      operationId: deleteSetting
+      parameters:
+        - name: name
+          description: Configuration property name, accepted values auth-server
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted successfully
+          content:
+            '*/*':
+              schema:
+                type: object
+        '401':
+          description: Unauthorized or no permission
+          content:
+            '*/*':
+              schema:
+                type: object
+        '404':
+          description: Setting not found
+          content:
+            '*/*':
+              schema:
+                type: object
+  /api/admin/{adminId}:
+    get:
+      tags:
+        - admin-controller
+      description: Get an Admin information
+      operationId: getAdmin
+      parameters:
+        - name: adminId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: Admin info
+          content:
+            '*/*':
+              schema:
+                type: object
+        '401':
+          description: Unauthorized or no permission
+          content:
+            '*/*':
+              schema:
+                type: object
+        '404':
+          description: Admin not found
+          content:
+            '*/*':
+              schema:
+                type: object
+    put:
+      tags:
+        - admin-controller
+      operationId: updateAdmin
+      parameters:
+        - name: adminId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Admin'
+        required: true
+      responses:
+        '200':
+          description: Updated successfully
+          content:
+            '*/*':
+              schema:
+                type: object
+        '400':
+          description: Invalid configuration
+          content:
+            '*/*':
+              schema:
+                type: object
+        '401':
+          description: Unauthorized or no permission
+          content:
+            '*/*':
+              schema:
+                type: object
+        '404':
+          description: Admin not found
+          content:
+            '*/*':
+              schema:
+                type: object
+    delete:
+      tags:
+        - admin-controller
+      operationId: deleteAdmin
+      parameters:
+        - name: adminId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: Deleted
+          content:
+            '*/*':
+              schema:
+                type: object
+        '401':
+          description: Unauthorized or no permission
+          content:
+            '*/*':
+              schema:
+                type: object
+        '404':
+          description: Admin not found
+          content:
+            '*/*':
+              schema:
+                type: object
+  /api/setting:
+    post:
+      tags:
+        - setting-controller
+      operationId: createSetting
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Setting'
+        required: true
+      responses:
+        '201':
+          description: Created successfully
+          content:
+            '*/*':
+              schema:
+                type: object
+        '400':
+          description: Invalid configuration
+          content:
+            '*/*':
+              schema:
+                type: object
+        '401':
+          description: Unauthorized or no permission
+          content:
+            '*/*':
+              schema:
+                type: object
+  /api/role:
+    post:
+      tags:
+        - role-controller
+      description: Create a role to have permissions and assign to clients
+      operationId: createRole
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Role'
+        required: true
+      responses:
+        '201':
+          description: Created
+          content:
+            '*/*':
+              schema:
+                type: object
+        '400':
+          description: Invalid details
+          content:
+            '*/*':
+              schema:
+                type: object
+        '401':
+          description: Unauthorized or no permission
+          content:
+            '*/*':
+              schema:
+                type: object
+  /api/role-permission:
+    post:
+      tags:
+        - role-permission-controller
+      description: Assign a permission to a role
+      operationId: createRolePermission
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RolePermission'
+        required: true
+      responses:
+        '201':
+          description: Assigned
+          content:
+            '*/*':
+              schema:
+                type: object
+        '401':
+          description: Unauthorized or no permission
+          content:
+            '*/*':
+              schema:
+                type: object
+        '400':
+          description: Role or permission not found
+          content:
+            '*/*':
+              schema:
+                type: object
+  /api/permission:
+    post:
+      tags:
+        - permission-controller
+      description: Create a permission  
+      operationId: createPermission
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Permission'
+        required: true
+      responses:
+        '201':
+          description: Created
+          content:
+            '*/*':
+              schema:
+                type: object
+        '401':
+          description: Unauthorized or no permission
+          content:
+            '*/*':
+              schema:
+                type: object
+        '400':
+          description: Invalid information
+          content:
+            '*/*':
+              schema:
+                type: object
+  /api/client-role:
+    post:
+      tags:
+        - client-role-controller
+      description: Assign a role to a client
+      operationId: createClientRole
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientRole'
+        required: true
+      responses:
+        '201':
+          description: Assigned
+          content:
+            '*/*':
+              schema:
+                type: object
+        '401':
+          description: Unauthorized or no permission
+          content:
+            '*/*':
+              schema:
+                type: object
+        '400':
+          description: Client or role not found
+          content:
+            '*/*':
+              schema:
+                type: object
+  /api/client-permission:
+    post:
+      tags:
+        - client-permission-controller
+      description: Assign a permission to a client directly  
+      operationId: createClientPermission
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientPermission'
+        required: true
+      responses:
+        '201':
+          description: Assigned
+          content:
+            '*/*':
+              schema:
+                type: object
+        '401':
+          description: Unauthorized or no permission
+          content:
+            '*/*':
+              schema:
+                type: object
+        '400':
+          description: Client or Permission not found
+          content:
+            '*/*':
+              schema:
+                type: object
+  /api/admin:
+    post:
+      tags:
+        - admin-controller
+      description: Create an Admin
+      operationId: createAdmin
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Admin'
+        required: true
+      responses:
+        '201':
+          description: Created
+          content:
+            '*/*':
+              schema:
+                type: object
+        '401':
+          description: Unauthorized or no permission
+          content:
+            '*/*':
+              schema:
+                type: object
+        '400':
+          description: Invalid information
+          content:
+            '*/*':
+              schema:
+                type: object
+  /api/admin/{adminId}/tokens:
+    post:
+      tags:
+        - admin-controller
+      description: Add a token for the Admin to connect with
+      operationId: createToken
+      parameters:
+        - name: adminId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+        required: true
+      responses:
+        '201':
+          description: Created
+          content:
+            '*/*':
+              schema:
+                type: object
+        '401':
+          description: Unauthorized or no permission
+          content:
+            '*/*':
+              schema:
+                type: object
+        '400':
+          description: Invalid information
+          content:
+            '*/*':
+              schema:
+                type: object
+        '404':
+          description: Admin not found
+          content:
+            '*/*':
+              schema:
+                type: object
+  /api/role/{roleId}:
+    delete:
+      tags:
+        - role-controller
+      description: Delete a role
+      operationId: deleteRole
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: Deleted
+          content:
+            '*/*':
+              schema:
+                type: object
+        '401':
+          description: Unauthorized or no permission
+          content:
+            '*/*':
+              schema:
+                type: object
+        '404':
+          description: Role not found
+          content:
+            '*/*':
+              schema:
+                type: object
+  /api/role-permission/{roleId}/{permissionId}:
+    delete:
+      tags:
+        - role-permission-controller
+      description: Delete a role permission assignment
+      operationId: deleteRolePermission
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+        - name: permissionId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: Deleted
+          content:
+            '*/*':
+              schema:
+                type: object
+        '401':
+          description: Unauthorized or no permission
+          content:
+            '*/*':
+              schema:
+                type: object
+        '404':
+          description: Role or permission not found
+          content:
+            '*/*':
+              schema:
+                type: object
+  /api/permission/{permissionId}:
+    delete:
+      tags:
+        - permission-controller
+      description: Delete a permission
+      operationId: deletePermission
+      parameters:
+        - name: permissionId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: Deleted
+          content:
+            '*/*':
+              schema:
+                type: object
+        '401':
+          description: Unauthorized or no permission
+          content:
+            '*/*':
+              schema:
+                type: object
+        '404':
+          description: Permission not found
+          content:
+            '*/*':
+              schema:
+                type: object
+  /api/client-role/{clientId}/{roleId}:
+    delete:
+      tags:
+        - client-role-controller
+      description: Remove a client role assignment
+      operationId: deleteClientRole
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: roleId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: Deleted
+          content:
+            '*/*':
+              schema:
+                type: object
+        '401':
+          description: Unauthorized or no permission
+          content:
+            '*/*':
+              schema:
+                type: object
+        '404':
+          description: Client or role not found
+          content:
+            '*/*':
+              schema:
+                type: object
+  /api/client-permission/{clientId}/{permissionId}:
+    delete:
+      tags:
+        - client-permission-controller
+      description: Delete a client permission assignment
+      operationId: deleteClientPermission
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: permissionId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: Deleted
+          content:
+            '*/*':
+              schema:
+                type: object
+        '401':
+          description: Unauthorized or no permission
+          content:
+            '*/*':
+              schema:
+                type: object
+        '404':
+          description: Client or permission not found
+          content:
+            '*/*':
+              schema:
+                type: object
+  /api/admin/{adminId}/tokens/{tokenValidation}:
+    delete:
+      tags:
+        - admin-controller
+      description: Remove a authorization token for the adminId 
+      operationId: deleteToken
+      parameters:
+        - name: adminId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+        - name: tokenValidation
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Removed
+          content:
+            '*/*':
+              schema:
+                type: object
+        '401':
+          description: Unauthorized or no permission
+          content:
+            '*/*':
+              schema:
+                type: object
+        '404':
+          description: Token or admin not found
+          content:
+            '*/*':
+              schema:
+                type: object
+components:
+  schemas:
+    Setting:
+      required:
+        - name
+        - updatedAt
+        - value
+      type: object
+      properties:
+        name:
+          type: string
+          description: the setting name
+          enum:
+            - auth-server
+        value:
+          type: string
+        description:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+    Admin:
+      required:
+        - administrative
+        - name
+        - owner
+        - permission
+      type: object
+      properties:
+        adminId:
+          type: integer
+          format: int32
+        name:
+          type: string
+        description:
+          type: string
+        owner:
+          type: boolean
+        administrative:
+          type: boolean
+          description: administrative access to the Gateway, for example, change Gateway settings
+        permission:
+          type: boolean
+          description: Alter permissions for clients
+    Role:
+      required:
+        - name
+      type: object
+      properties:
+        roleId:
+          type: integer
+          format: int32
+        name:
+          type: string
+        description:
+          type: string
+    RolePermission:
+      required:
+        - permissionId
+        - roleId
+      type: object
+      properties:
+        roleId:
+          type: integer
+          format: int32
+        permissionId:
+          type: integer
+          format: int32
+    Permission:
+      required:
+        - read
+        - topic
+        - write
+      type: object
+      properties:
+        permissionId:
+          type: integer
+          format: int32
+        topic:
+          type: string
+        key:
+          type: string
+        read:
+          type: boolean
+        write:
+          type: boolean
+    ClientRole:
+      required:
+        - clientId
+        - roleId
+      type: object
+      properties:
+        clientId:
+          type: string
+        roleId:
+          type: integer
+          format: int32
+    ClientPermission:
+      required:
+        - clientId
+        - permissionId
+      type: object
+      properties:
+        clientId:
+          type: string
+        permissionId:
+          type: integer
+          format: int32
