@@ -17,7 +17,10 @@ function Page() {
     const [error, setError] = useState<any>(null);
 
     useEffect(() => {
-        if (roomUsers[roomId]?.includes(username)) return;
+        if (roomUsers[roomId]?.includes(username)){
+            setLoading(false);
+            return;
+        }
 
         const joinRoom = async () => {
             try {
@@ -42,6 +45,7 @@ function Page() {
                         .then(() => {
                             setLoading(false);
                             roomUsers[roomId]?.push(username)
+                            gateway?.publish(roomId, username, JSON.stringify({type: "join", text: ''}))
                         })
                         .catch((error) => {
                             setError(error);

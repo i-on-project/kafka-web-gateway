@@ -89,16 +89,25 @@ export default class GatewayClient {
 
         this.connect(token);
 
-        const fullTopics = Array.from(this.#fullTopicsSubscriptions.values());
-        const keysSubscriptions = Array.from(this.#keysSubscriptions.values());
+        const tempCallback = this.#socket!!.onopen!!;
 
-        for (const subscription of fullTopics) {
-            this.subscribe(subscription.topic, subscription.key, subscription.messageCallback);
-        }
+        this.#socket!!.onopen = () => {
+            // Hammer time WA
+            // @ts-ignore
+            tempCallback(null as Event);
+            const fullTopics = Array.from(this.#fullTopicsSubscriptions.values());
+            const keysSubscriptions = Array.from(this.#keysSubscriptions.values());
 
-        for (const subscription of keysSubscriptions) {
-            this.subscribe(subscription.topic, subscription.key, subscription.messageCallback);
-        }
+            for (const subscription of fullTopics) {
+                this.subscribe(subscription.topic, subscription.key, subscription.messageCallback);
+            }
+
+            for (const subscription of keysSubscriptions) {
+                this.subscribe(subscription.topic, subscription.key, subscription.messageCallback);
+            }
+
+            this.#socket!!.onopen = tempCallback;
+        };
     }
 
     onOpen(callback: Function) {
